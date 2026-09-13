@@ -46,19 +46,16 @@ CREATE TABLE IF NOT EXISTS bookings (
     );
 
 -- 5. Refunds, Cancellations & Exchanges Module (IT25102432 - You)
-CREATE TABLE IF NOT EXISTS refunds_exchanges (
-                                                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                                 booking_id BIGINT NOT NULL,
-                                                 customer_id BIGINT NOT NULL,
-                                                 request_type VARCHAR(20) NOT NULL,
-    original_amount DECIMAL(10,2) NOT NULL,
-    refund_amount DECIMAL(10,2) NOT NULL,
-    cancellation_fee DECIMAL(10,2) DEFAULT 0.00,
-    status VARCHAR(20) NOT NULL,
-    reason VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
-    );
+CREATE TABLE refunds_exchanges (
+                                   id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                   booking_id BIGINT,
+                                   customer_id BIGINT,
+                                   original_amount DECIMAL(10,2),
+                                   cancellation_fee DECIMAL(10,2),
+                                   refund_amount DECIMAL(10,2),
+                                   request_type VARCHAR(255),
+                                   status VARCHAR(255)
+);
 
 -- 6. Customer Loyalty & Vouchers Module (IT24100907)
 CREATE TABLE IF NOT EXISTS loyalty_accounts (
