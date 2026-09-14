@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Seating Layout & Hall Allocation (IT25102154)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <!-- Student & Module Banner -->
+    <header class="banner">
+        <div class="banner-titles">
+            <h1>🎬 Cinema Reservation System</h1>
+            <p>Seating Layout & Hall Allocation (IT25102154)</p>
+        </div>
+        <div>
+            <span class="student-badge">Student ID: IT25102154</span>
+        </div>
+    </header>
+
+    <div class="main-content">
+        <!-- Left Column: Interactive Seating Layout Viewer -->
+        <div class="card">
+            <!-- Hall Selector Bar -->
+            <div class="hall-selector-bar">
+                <div class="select-group">
+                    <label for="hallSelect">Cinema Hall:</label>
+                    <select id="hallSelect">
+                        <option value="">Loading cinema halls...</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary" id="refreshBtn" title="Reload from Backend">
+                    ↻ Refresh
+                </button>
+            </div>
+
+            <!-- Hall Status Indicator -->
+            <div class="status-row">
+                <span id="hallDetails">Loading layout details...</span>
+                <span id="connectionBadge" class="notice-badge badge-live">● Connected to Backend</span>
+            </div>
+
+            <!-- Curved Cinema Screen -->
+            <div class="screen-container">
+                <div class="screen"></div>
+                <div class="screen-label">SCREEN</div>
+            </div>
+
+            <!-- Interactive Seating Grid -->
+            <div class="seating-wrapper">
+                <div id="seatGrid" class="seat-grid">
+                    <!-- Seats dynamically rendered via app.js -->
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-swatch legend-standard"></div>
+                    <span>Standard ($10)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-swatch legend-vip"></div>
+                    <span>VIP ($15)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-swatch legend-selected"></div>
+                    <span>Selected</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-swatch legend-disabled"></div>
+                    <span>Inactive / Disabled</span>
+                </div>
+            </div>
+
+            <!-- Selection Summary -->
+            <div class="selection-summary">
+                <div class="summary-header">
+                    <span class="summary-title">Selected Seats:</span>
+                    <button class="btn btn-secondary" id="clearSelectionBtn" style="padding: 4px 10px; font-size: 0.78rem;">Clear</button>
+                </div>
+                <div id="selectedChips" class="selected-chips">
+                    <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
+                </div>
+                <div id="priceSummary" class="price-summary">
+                    Total: $0.00
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Create Hall Form -->
+        <div class="card">
+            <h2 class="form-title">➕ Allocate New Hall</h2>
+            <p class="form-subtitle">
+                Create a cinema hall and auto-generate its seating layout matrix (Rows A–Z).
+            </p>
+
+            <form id="createHallForm">
+                <div class="form-group">
+                    <label for="hallName">Hall Name</label>
+                    <input type="text" id="hallName" placeholder="e.g. Hall 2 - Dolby Atmos" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="totalRows">Total Rows (A-Z)</label>
+                        <input type="number" id="totalRows" min="1" max="26" value="5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="seatsPerRow">Seats Per Row</label>
+                        <input type="number" id="seatsPerRow" min="1" max="20" value="8" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="hallType">Hall Type</label>
+                    <select id="hallType" required>
+                        <option value="IMAX">IMAX</option>
+                        <option value="VIP">VIP</option>
+                        <option value="STANDARD" selected>STANDARD</option>
+                        <option value="3D">3D Dolby</option>
+                        <option value="4DX">4DX</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" id="submitHallBtn" style="width: 100%; margin-top: 10px;">
+                    Allocate Hall & Generate Layout
+                </button>
+            </form>
+
+            <div class="form-footer-note">
+                <strong>💡 Note:</strong>
+                Submitting this form sends a <code>POST /api/halls</code> request to the Spring Boot backend. The system automatically creates the hall and populates its seat matrix.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">Notification message</div>
+
+<script src="app.js"></script>
+</body>
+</html>

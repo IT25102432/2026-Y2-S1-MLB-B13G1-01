@@ -1,20 +1,6 @@
--- 1. Movie Catalog Module (IT25101311)
-CREATE TABLE IF NOT EXISTS movies (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    genre VARCHAR(100),
-    duration_minutes INT,
-    description TEXT,
-    poster_url VARCHAR(500)
-);
-
--- 2. Cinema Hall & Seating Module (IT25102154)
--- Existing cinema_halls table kept intact for existing foreign key references
-CREATE TABLE IF NOT EXISTS cinema_halls (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    hall_name VARCHAR(100) NOT NULL,
-    total_capacity INT NOT NULL
-);
+-- ==========================================================
+-- Cinema Hall & Seating Layout Module (IT25102154)
+-- ==========================================================
 
 -- Halls Table for Seating Layout and Hall Allocation
 CREATE TABLE IF NOT EXISTS halls (
@@ -36,47 +22,13 @@ CREATE TABLE IF NOT EXISTS seats (
     FOREIGN KEY (hall_id) REFERENCES halls(id) ON DELETE CASCADE
 );
 
--- 3. Showtime Scheduling Module (IT25103071)
-CREATE TABLE IF NOT EXISTS showtimes (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    movie_id BIGINT NOT NULL,
-    hall_id BIGINT NOT NULL,
-    show_time DATETIME NOT NULL,
-    ticket_price DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (movie_id) REFERENCES movies(id),
-    FOREIGN KEY (hall_id) REFERENCES cinema_halls(id)
-);
-
--- 4. Seat Reservations Module (IT25100266)
-CREATE TABLE IF NOT EXISTS bookings (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    customer_id BIGINT NOT NULL,
-    showtime_id BIGINT NOT NULL,
-    booking_status VARCHAR(20) DEFAULT 'CONFIRMED',
-    total_amount DECIMAL(10,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (showtime_id) REFERENCES showtimes(id)
-);
-
--- 6. Customer Loyalty & Vouchers Module (IT24100907)
-CREATE TABLE IF NOT EXISTS loyalty_accounts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    customer_id BIGINT UNIQUE NOT NULL,
-    points_balance INT DEFAULT 0,
-    voucher_code VARCHAR(50),
-    discount_amount DECIMAL(10,2) DEFAULT 0.00
-);
-
 -- ==========================================================
--- Initial Seed Data: Seating Layout and Hall Allocation (IT25102154)
+-- Initial Seed Data: Seating Layout and Hall Allocation
 -- ==========================================================
 
 -- Insert Cinema Hall "Hall 1 - IMAX" (Rows A-E, 8 seats per row = 40 seats)
 INSERT INTO halls (id, name, total_rows, seats_per_row, hall_type)
 VALUES (1, 'Hall 1 - IMAX', 5, 8, 'IMAX');
-
-INSERT INTO cinema_halls (id, hall_name, total_capacity)
-VALUES (1, 'Hall 1 - IMAX', 40);
 
 -- Insert Seats for Hall 1:
 -- Rows A & B: VIP seats (A1-A8, B1-B8)

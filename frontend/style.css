@@ -1,0 +1,502 @@
+:root {
+    --bg-primary: #0b0f19;
+    --bg-secondary: #131b2e;
+    --bg-card: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent-blue: #38bdf8;
+    --standard-seat: #2563eb;
+    --standard-hover: #3b82f6;
+    --vip-seat: #f59e0b;
+    --vip-hover: #fbbf24;
+    --selected-seat: #10b981;
+    --selected-hover: #34d399;
+    --disabled-seat: #334155;
+    --border-color: #334155;
+    --screen-glow: rgba(56, 189, 248, 0.35);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* 1. Student & Module Banner */
+.banner {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+    border: 1px solid #3730a3;
+    border-radius: 16px;
+    padding: 20px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.2);
+}
+
+.banner-titles h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.banner-titles p {
+    font-size: 0.95rem;
+    color: #a5b4fc;
+    margin-top: 4px;
+}
+
+.student-badge {
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid #6366f1;
+    color: #c7d2fe;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Main Content Grid */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+@media (min-width: 900px) {
+    .main-content {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+.card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 2. Hall Selector Bar */
+.hall-selector-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.select-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 260px;
+}
+
+.select-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+select, input {
+    background-color: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+select:focus, input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background: #334155;
+    box-shadow: none;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* 3. Curved Cinema Screen */
+.screen-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px 0 35px 0;
+    perspective: 500px;
+}
+
+.screen {
+    width: 85%;
+    height: 18px;
+    background: linear-gradient(to bottom, #ffffff, rgba(255, 255, 255, 0.1));
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow: 0 10px 30px var(--screen-glow);
+    transform: rotateX(-20deg);
+}
+
+.screen-label {
+    margin-top: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--accent-blue);
+    text-transform: uppercase;
+}
+
+/* 4. Interactive Seating Grid */
+.seating-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: auto;
+    padding: 10px 0 20px 0;
+}
+
+.seat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+
+.seat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.row-label {
+    width: 24px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+    user-select: none;
+}
+
+.seat {
+    width: 38px;
+    height: 36px;
+    border-radius: 8px 8px 4px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    position: relative;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+
+.seat::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 5px;
+    right: 5px;
+    height: 3px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+}
+
+/* Standard seat (blue) */
+.seat.standard {
+    background-color: var(--standard-seat);
+}
+
+.seat.standard:hover:not(.disabled) {
+    background-color: var(--standard-hover);
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* VIP seat (amber) */
+.seat.vip {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: 1px solid #fcd34d;
+}
+
+.seat.vip:hover:not(.disabled) {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    transform: translateY(-3px) scale(1.08);
+    box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+}
+
+/* Selected seat (green) */
+.seat.selected {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    transform: scale(1.1) !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.7) !important;
+    border: 1px solid #6ee7b7 !important;
+    animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.9); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1.1); }
+}
+
+/* Disabled seat (gray) */
+.seat.disabled {
+    background-color: var(--disabled-seat);
+    color: #64748b;
+    cursor: not-allowed;
+    opacity: 0.5;
+    box-shadow: none;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin: 24px 0 12px 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.legend-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+}
+
+.legend-standard { background-color: var(--standard-seat); }
+.legend-vip { background: linear-gradient(135deg, #f59e0b, #d97706); border: 1px solid #fcd34d; }
+.legend-selected { background-color: var(--selected-seat); }
+.legend-disabled { background-color: var(--disabled-seat); }
+
+/* Selection Summary */
+.selection-summary {
+    margin-top: 20px;
+    padding: 16px;
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.summary-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.selected-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 32px;
+    align-items: center;
+}
+
+.chip {
+    background: #047857;
+    color: #ecfdf5;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid #10b981;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.chip-type {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    font-weight: 400;
+}
+
+.empty-selection {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.price-summary {
+    margin-top: 10px;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* 5. Create Hall Form */
+.form-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: white;
+}
+
+.form-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-footer-note {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.notice-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+
+.badge-live {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-fallback {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1e293b;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-blue);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    font-size: 0.9rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
