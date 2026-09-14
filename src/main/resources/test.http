@@ -1,0 +1,9 @@
+POST http://localhost:8080/api/refunds/cancel
+Content-Type: application/json
+
+{
+  "bookingId": 1,
+  "customerId": 1,
+  "reason": "Unable to attend",
+  "originalAmount": 100.00
+}
