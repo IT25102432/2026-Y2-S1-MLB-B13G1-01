@@ -88,4 +88,53 @@ public class HallServiceTest {
         Seat reverted = hallService.toggleSeatStatus(seat.getId());
         assertEquals(initialStatus, reverted.isActive());
     }
+
+    @Test
+    void testAllocateHallWithBasePrice() {
+        Hall newHall = new Hall("Hall With Price", 2, 4, "IMAX", 1800.0);
+        Hall created = hallService.allocateHall(newHall);
+
+        assertNotNull(created.getId());
+        assertEquals("Hall With Price", created.getName());
+        assertEquals(1800.0, created.getBasePrice());
+
+        Hall retrieved = hallService.getHallById(created.getId());
+        assertEquals(1800.0, retrieved.getBasePrice());
+    }
+
+    @Test
+    void testUpdateHall() {
+        Hall newHall = new Hall("Hall Before Update", 2, 3, "STANDARD", 1000.0);
+        Hall created = hallService.allocateHall(newHall);
+
+        Hall updateData = new Hall();
+        updateData.setName("Hall After Update");
+        updateData.setHallType("VIP");
+        updateData.setBasePrice(2500.0);
+
+        Hall updated = hallService.updateHall(created.getId(), updateData);
+        assertEquals("Hall After Update", updated.getName());
+        assertEquals("VIP", updated.getHallType());
+        assertEquals(2500.0, updated.getBasePrice());
+    }
+
+    @Test
+    void testDeleteHall() {
+        Hall newHall = new Hall("Hall To Delete In Service", 2, 2, "STANDARD");
+        Hall created = hallService.allocateHall(newHall);
+        Long hallId = created.getId();
+
+        // Ensure seats exist
+        List<Seat> seatsBefore = hallService.getSeatsByHallId(hallId);
+        assertFalse(seatsBefore.isEmpty());
+
+        // Delete hall
+        hallService.deleteHall(hallId);
+
+        // Verify hall is deleted
+        assertThrows(IllegalArgumentException.class, () -> hallService.getHallById(hallId));
+
+        // Verify seats cascade deleted
+        assertThrows(IllegalArgumentException.class, () -> hallService.getSeatsByHallId(hallId));
+    }
 }

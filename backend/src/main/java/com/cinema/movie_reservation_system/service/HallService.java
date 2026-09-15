@@ -80,6 +80,9 @@ public class HallService {
         if (hall.getHallType() == null || hall.getHallType().trim().isEmpty()) {
             hall.setHallType("STANDARD");
         }
+        if (hall.getBasePrice() == null || hall.getBasePrice() <= 0) {
+            hall.setBasePrice(1200.0);
+        }
 
         // 1. Save the hall entity to get generated primary key ID
         Hall savedHall = hallRepository.save(hall);
@@ -88,6 +91,55 @@ public class HallService {
         generateSeatMatrix(savedHall);
 
         return savedHall;
+    }
+
+    /**
+     * Update an existing cinema hall's details (e.g. name, type, price).
+     *
+     * @param id          The ID of the hall to update.
+     * @param updatedHall The updated hall data.
+     * @return The updated Hall object.
+     * @throws IllegalArgumentException if hall not found or input invalid.
+     */
+    @Transactional
+    public Hall updateHall(Long id, Hall updatedHall) {
+        Hall existing = getHallById(id);
+
+        if (updatedHall.getName() != null && !updatedHall.getName().trim().isEmpty()) {
+            existing.setName(updatedHall.getName().trim());
+        }
+        if (updatedHall.getHallType() != null && !updatedHall.getHallType().trim().isEmpty()) {
+            existing.setHallType(updatedHall.getHallType().trim());
+        }
+        if (updatedHall.getTotalRows() > 0) {
+            existing.setTotalRows(updatedHall.getTotalRows());
+        }
+        if (updatedHall.getSeatsPerRow() > 0) {
+            existing.setSeatsPerRow(updatedHall.getSeatsPerRow());
+        }
+        if (updatedHall.getBasePrice() != null && updatedHall.getBasePrice() > 0) {
+            existing.setBasePrice(updatedHall.getBasePrice());
+        }
+
+        return hallRepository.save(existing);
+    }
+
+    /**
+     * Delete a cinema hall and cascade delete all its associated seats.
+     *
+     * @param id The hall ID to delete.
+     * @throws IllegalArgumentException if hall does not exist.
+     */
+    @Transactional
+    public void deleteHall(Long id) {
+        // Ensure hall exists first
+        getHallById(id);
+
+        // Cascade delete seats belonging to this hall
+        seatRepository.deleteByHallId(id);
+
+        // Delete the hall record
+        hallRepository.deleteById(id);
     }
 
     /**

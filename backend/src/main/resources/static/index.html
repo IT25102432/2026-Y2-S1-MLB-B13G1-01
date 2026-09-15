@@ -13,133 +13,254 @@
     <header class="banner">
         <div class="banner-titles">
             <h1>🎬 Cinema Reservation System</h1>
-            <p>Seating Layout & Hall Allocation (IT25102154)</p>
+            <p>Seating Layout &amp; Hall Allocation (IT25102154)</p>
         </div>
-        <div>
+        <div class="banner-badges">
             <span class="student-badge">Student ID: IT25102154</span>
+            <span id="connectionBadge" class="notice-badge badge-live">● Connected to Backend</span>
         </div>
     </header>
 
-    <div class="main-content">
-        <!-- Left Column: Interactive Seating Layout Viewer -->
-        <div class="card">
-            <!-- Hall Selector Bar -->
-            <div class="hall-selector-bar">
-                <div class="select-group">
-                    <label for="hallSelect">Cinema Hall:</label>
-                    <select id="hallSelect">
-                        <option value="">Loading cinema halls...</option>
-                    </select>
+    <!-- CRUD Architecture Overview Banner -->
+    <div class="crud-overview-bar">
+        <div class="crud-overview-title">⚡ Full CRUD REST Endpoints:</div>
+        <div class="crud-tags">
+            <span class="crud-tag tag-create"><b>[C] CREATE:</b> POST /api/halls</span>
+            <span class="crud-tag tag-read"><b>[R] READ:</b> GET /api/halls &amp; /seats</span>
+            <span class="crud-tag tag-update"><b>[U] UPDATE:</b> PUT /api/halls/{id} &amp; /seats/{id}/status</span>
+            <span class="crud-tag tag-delete"><b>[D] DELETE:</b> DELETE /api/halls/{id}</span>
+        </div>
+    </div>
+
+    <!-- Admin Hall Management (CRUD) Panel -->
+    <section class="card">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">⚙️ Admin Hall Management (CRUD)</h2>
+                <p class="panel-subtitle">Create, view, edit cinema halls, and delete halls with cascaded seat removal.</p>
+            </div>
+            <button class="btn btn-secondary" id="refreshHallsBtn" title="Reload Halls Directory">
+                ↻ Refresh Directory
+            </button>
+        </div>
+
+        <div class="admin-grid">
+            <!-- [R] Read Section: Hall Directory Table -->
+            <div class="table-section">
+                <div class="section-subheading">
+                    <h3>📋 [R] Cinema Halls Directory</h3>
+                    <span class="count-badge" id="hallCountBadge">0 halls</span>
                 </div>
-                <button class="btn btn-secondary" id="refreshBtn" title="Reload from Backend">
-                    ↻ Refresh
-                </button>
+                <div class="table-responsive">
+                    <table class="halls-table" id="hallsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Hall Name</th>
+                                <th>Capacity</th>
+                                <th>Type</th>
+                                <th>Base Price (LKR)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hallsTableBody">
+                            <tr>
+                                <td colspan="6" class="table-loading">Loading halls directory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <!-- Hall Status Indicator -->
-            <div class="status-row">
+            <!-- [C] Create Section: Allocate New Hall Form -->
+            <div class="form-section">
+                <div class="section-subheading">
+                    <h3>➕ [C] Allocate New Hall</h3>
+                </div>
+                <p class="panel-subtitle" style="margin-bottom: 16px;">
+                    Enter hall specifications to generate its seating layout matrix (Rows A–Z).
+                </p>
+
+                <form id="createHallForm">
+                    <div class="form-group">
+                        <label for="hallName">Hall Name</label>
+                        <input type="text" id="hallName" placeholder="e.g. Hall 2 - Dolby Atmos" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalRows">Total Rows (A-Z)</label>
+                            <input type="number" id="totalRows" min="1" max="26" value="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="seatsPerRow">Seats Per Row</label>
+                            <input type="number" id="seatsPerRow" min="1" max="20" value="8" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="hallType">Hall Type</label>
+                            <select id="hallType" required>
+                                <option value="IMAX">IMAX</option>
+                                <option value="VIP">VIP</option>
+                                <option value="STANDARD" selected>STANDARD</option>
+                                <option value="3D">3D Dolby</option>
+                                <option value="4DX">4DX</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="basePrice">Base Price in LKR (Rs.)</label>
+                            <input type="number" id="basePrice" min="100" step="50" value="1200" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-create" id="submitHallBtn">
+                        ➕ Allocate Hall &amp; Auto-Generate Seats (POST)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Seating Layout Viewer & [U] Seat Status Toggle -->
+    <section class="card layout-card" id="seatingLayoutSection">
+        <div class="layout-header">
+            <div>
+                <h2 class="panel-title">🪑 Interactive Seating Layout &amp; Hall Allocation</h2>
+                <p class="panel-subtitle">View seating matrices, select seats for customer booking, or toggle maintenance status.</p>
+            </div>
+            <div class="hall-select-wrapper">
+                <label for="hallSelect">Hall:</label>
+                <select id="hallSelect">
+                    <option value="">Loading halls...</option>
+                </select>
+                <button class="btn btn-secondary" id="refreshLayoutBtn" title="Refresh Seating Layout">↻</button>
+            </div>
+        </div>
+
+        <!-- Hall Info & Mode Switcher -->
+        <div class="layout-toolbar">
+            <div class="hall-info-bar">
                 <span id="hallDetails">Loading layout details...</span>
-                <span id="connectionBadge" class="notice-badge badge-live">● Connected to Backend</span>
             </div>
 
-            <!-- Curved Cinema Screen -->
-            <div class="screen-container">
-                <div class="screen"></div>
-                <div class="screen-label">SCREEN</div>
-            </div>
-
-            <!-- Interactive Seating Grid -->
-            <div class="seating-wrapper">
-                <div id="seatGrid" class="seat-grid">
-                    <!-- Seats dynamically rendered via app.js -->
-                </div>
-            </div>
-
-            <!-- Legend -->
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-swatch legend-standard"></div>
-                    <span>Standard (Rs. 1,200)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-vip"></div>
-                    <span>VIP (Rs. 2,000)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-selected"></div>
-                    <span>Selected</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-disabled"></div>
-                    <span>Inactive / Disabled</span>
-                </div>
-            </div>
-
-            <!-- Selection Summary -->
-            <div class="selection-summary">
-                <div class="summary-header">
-                    <span class="summary-title">Selected Seats:</span>
-                    <button class="btn btn-secondary" id="clearSelectionBtn" style="padding: 4px 10px; font-size: 0.78rem;">Clear</button>
-                </div>
-                <div id="selectedChips" class="selected-chips">
-                    <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
-                </div>
-                <div id="priceSummary" class="price-summary">
-                    Total: Rs. 0.00
+            <!-- Mode Switcher -->
+            <div class="mode-switcher-container">
+                <span class="mode-label">Seat Click Mode:</span>
+                <div class="mode-buttons">
+                    <button type="button" class="btn-mode active" id="modeBookingBtn" title="Select seats for ticket reservation">
+                        🎟️ Booking Selection
+                    </button>
+                    <button type="button" class="btn-mode" id="modeMaintenanceBtn" title="Click any seat to toggle its maintenance status">
+                        🛠️ [U] Admin Maintenance Toggle
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: Create Hall Form -->
-        <div class="card">
-            <h2 class="form-title">➕ Allocate New Hall</h2>
-            <p class="form-subtitle">
-                Create a cinema hall and auto-generate its seating layout matrix (Rows A–Z).
-            </p>
+        <!-- Mode Notification Alert -->
+        <div id="modeAlert" class="mode-alert mode-booking">
+            <span id="modeAlertText">🎟️ Booking Mode Active: Click any available seat to select it for ticket reservation.</span>
+        </div>
 
-            <form id="createHallForm">
-                <div class="form-group">
-                    <label for="hallName">Hall Name</label>
-                    <input type="text" id="hallName" placeholder="e.g. Hall 2 - Dolby Atmos" required>
-                </div>
+        <!-- Cinema Curved Screen -->
+        <div class="screen-container">
+            <div class="screen"></div>
+            <div class="screen-label">CINEMA SCREEN</div>
+        </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="totalRows">Total Rows (A-Z)</label>
-                        <input type="number" id="totalRows" min="1" max="26" value="5" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="seatsPerRow">Seats Per Row</label>
-                        <input type="number" id="seatsPerRow" min="1" max="20" value="8" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="hallType">Hall Type</label>
-                    <select id="hallType" required>
-                        <option value="IMAX">IMAX</option>
-                        <option value="VIP">VIP</option>
-                        <option value="STANDARD" selected>STANDARD</option>
-                        <option value="3D">3D Dolby</option>
-                        <option value="4DX">4DX</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn" id="submitHallBtn" style="width: 100%; margin-top: 10px;">
-                    Allocate Hall & Generate Layout
-                </button>
-            </form>
-
-            <div class="form-footer-note">
-                <strong>💡 Note:</strong>
-                Submitting this form sends a <code>POST /api/halls</code> request to the Spring Boot backend. The system automatically creates the hall and populates its seat matrix.
+        <!-- Interactive Seating Grid -->
+        <div class="seating-wrapper">
+            <div id="seatGrid" class="seat-grid">
+                <!-- Seats dynamically rendered via app.js -->
             </div>
         </div>
+
+        <!-- [U] Seat Inspector & Maintenance Toggle -->
+        <div class="seat-inspector" id="seatInspector">
+            <div class="inspector-header">
+                <span class="inspector-title">🔍 [U] Seat Inspector &amp; Status Toggle (PUT /api/halls/seats/{id}/status)</span>
+                <span class="inspector-hint">Click any seat above to inspect or toggle its status</span>
+            </div>
+            <div class="inspector-body" id="inspectorBody">
+                <div class="inspector-empty">No seat selected. Click any seat in the layout above to inspect details and toggle status!</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-swatch legend-standard"></div>
+                <span id="legendStandardPrice">Standard (Rs. 1,200)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-vip"></div>
+                <span id="legendVipPrice">VIP (Rs. 2,000)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-selected"></div>
+                <span>Selected for Booking</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-disabled"></div>
+                <span>Under Maintenance / Disabled</span>
+            </div>
+        </div>
+
+        <!-- Selection Summary -->
+        <div class="selection-summary">
+            <div class="summary-header">
+                <span class="summary-title">Selected Seats (Customer Booking):</span>
+                <button class="btn btn-secondary" id="clearSelectionBtn" style="padding: 4px 10px; font-size: 0.78rem;">Clear Selection</button>
+            </div>
+            <div id="selectedChips" class="selected-chips">
+                <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
+            </div>
+            <div id="priceSummary" class="price-summary">
+                Total: Rs. 0.00
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- [U] Edit Hall Modal -->
+<div id="editHallModal" class="modal-backdrop">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>✏️ [U] Edit Cinema Hall</h3>
+            <button class="modal-close" id="closeEditModalBtn">&times;</button>
+        </div>
+        <form id="editHallForm">
+            <input type="hidden" id="editHallId">
+            <div class="form-group">
+                <label for="editHallName">Hall Name</label>
+                <input type="text" id="editHallName" required>
+            </div>
+            <div class="form-group">
+                <label for="editHallType">Hall Type</label>
+                <select id="editHallType" required>
+                    <option value="IMAX">IMAX</option>
+                    <option value="VIP">VIP</option>
+                    <option value="STANDARD">STANDARD</option>
+                    <option value="3D">3D Dolby</option>
+                    <option value="4DX">4DX</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editBasePrice">Base Ticket Price in LKR (Rs.)</label>
+                <input type="number" id="editBasePrice" min="100" step="50" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelEditModalBtn">Cancel</button>
+                <button type="submit" class="btn btn-update" id="saveEditHallBtn">💾 Save Changes (PUT)</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Toast Notification -->
-<div id="toast" class="toast">Notification message</div>
+<div id="toast" class="toast">Action completed successfully</div>
 
 <script src="app.js"></script>
 </body>

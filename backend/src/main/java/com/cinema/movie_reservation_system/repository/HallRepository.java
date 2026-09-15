@@ -26,13 +26,26 @@ public class HallRepository {
     }
 
     // RowMapper to map database rows to Hall instances
-    private final RowMapper<Hall> hallRowMapper = (rs, rowNum) -> new Hall(
-            rs.getLong("id"),
-            rs.getString("name"),
-            rs.getInt("total_rows"),
-            rs.getInt("seats_per_row"),
-            rs.getString("hall_type")
-    );
+    private final RowMapper<Hall> hallRowMapper = (rs, rowNum) -> {
+        Hall hall = new Hall(
+                rs.getLong("id"),
+                rs.getString("name"),
+                rs.getInt("total_rows"),
+                rs.getInt("seats_per_row"),
+                rs.getString("hall_type")
+        );
+        try {
+            double bp = rs.getDouble("base_price");
+            if (!rs.wasNull()) {
+                hall.setBasePrice(bp);
+            } else {
+                hall.setBasePrice(1200.0);
+            }
+        } catch (Exception e) {
+            hall.setBasePrice(1200.0);
+        }
+        return hall;
+    };
 
     /**
      * Retrieve all cinema halls from the database.
@@ -40,7 +53,7 @@ public class HallRepository {
      * @return List of all halls.
      */
     public List<Hall> findAll() {
-        String sql = "SELECT id, name, total_rows, seats_per_row, hall_type FROM halls ORDER BY id ASC";
+        String sql = "SELECT id, name, total_rows, seats_per_row, hall_type, base_price FROM halls ORDER BY id ASC";
         return jdbcTemplate.query(sql, hallRowMapper);
     }
 
@@ -51,7 +64,7 @@ public class HallRepository {
      * @return Optional containing the Hall if found, or empty Optional.
      */
     public Optional<Hall> findById(Long id) {
-        String sql = "SELECT id, name, total_rows, seats_per_row, hall_type FROM halls WHERE id = ?";
+        String sql = "SELECT id, name, total_rows, seats_per_row, hall_type, base_price FROM halls WHERE id = ?";
         List<Hall> halls = jdbcTemplate.query(sql, hallRowMapper, id);
         return halls.isEmpty() ? Optional.empty() : Optional.of(halls.get(0));
     }
@@ -65,8 +78,11 @@ public class HallRepository {
      * @return The persisted Hall with its assigned ID.
      */
     public Hall save(Hall hall) {
+        if (hall.getBasePrice() == null || hall.getBasePrice() <= 0) {
+            hall.setBasePrice(1200.0);
+        }
         if (hall.getId() == null) {
-            String sql = "INSERT INTO halls (name, total_rows, seats_per_row, hall_type) VALUES (?, ?, ?, ?)";
+            String sql = "INSERT INTO halls (name, total_rows, seats_per_row, hall_type, base_price) VALUES (?, ?, ?, ?, ?)";
             KeyHolder keyHolder = new GeneratedKeyHolder();
 
             jdbcTemplate.update(connection -> {
@@ -75,6 +91,7 @@ public class HallRepository {
                 ps.setInt(2, hall.getTotalRows());
                 ps.setInt(3, hall.getSeatsPerRow());
                 ps.setString(4, hall.getHallType());
+                ps.setDouble(5, hall.getBasePrice());
                 return ps;
             }, keyHolder);
 
@@ -84,9 +101,20 @@ public class HallRepository {
             }
             return hall;
         } else {
-            String sql = "UPDATE halls SET name = ?, total_rows = ?, seats_per_row = ?, hall_type = ? WHERE id = ?";
-            jdbcTemplate.update(sql, hall.getName(), hall.getTotalRows(), hall.getSeatsPerRow(), hall.getHallType(), hall.getId());
+            String sql = "UPDATE halls SET name = ?, total_rows = ?, seats_per_row = ?, hall_type = ?, base_price = ? WHERE id = ?";
+            jdbcTemplate.update(sql, hall.getName(), hall.getTotalRows(), hall.getSeatsPerRow(), hall.getHallType(), hall.getBasePrice(), hall.getId());
             return hall;
         }
+    }
+
+    /**
+     * Delete a cinema hall by its unique ID.
+     *
+     * @param id The hall ID to delete.
+     * @return Number of rows affected.
+     */
+    public int deleteById(Long id) {
+        String sql = "DELETE FROM halls WHERE id = ?";
+        return jdbcTemplate.update(sql, id);
     }
 }

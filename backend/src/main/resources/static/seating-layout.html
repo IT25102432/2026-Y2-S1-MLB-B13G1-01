@@ -4,911 +4,264 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cinema Seating Layout & Hall Allocation (IT25102154)</title>
-    <style>
-        :root {
-            --bg-primary: #0b0f19;
-            --bg-secondary: #131b2e;
-            --bg-card: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-blue: #38bdf8;
-            --standard-seat: #2563eb;
-            --standard-hover: #3b82f6;
-            --vip-seat: #f59e0b;
-            --vip-hover: #fbbf24;
-            --selected-seat: #10b981;
-            --selected-hover: #34d399;
-            --disabled-seat: #334155;
-            --border-color: #334155;
-            --screen-glow: rgba(56, 189, 248, 0.35);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-main);
-            min-height: 100vh;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        /* 1. Student & Module Banner */
-        .banner {
-            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            border: 1px solid #3730a3;
-            border-radius: 16px;
-            padding: 20px 28px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.2);
-        }
-
-        .banner-titles h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .banner-titles p {
-            font-size: 0.95rem;
-            color: #a5b4fc;
-            margin-top: 4px;
-        }
-
-        .student-badge {
-            background: rgba(99, 102, 241, 0.2);
-            border: 1px solid #6366f1;
-            color: #c7d2fe;
-            padding: 6px 14px;
-            border-radius: 9999px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        /* Main Grid: Left Layout / Right Form */
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-
-        @media (min-width: 900px) {
-            .main-content {
-                grid-template-columns: 2fr 1fr;
-            }
-        }
-
-        .card {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        /* 2. Hall Selector Bar */
-        .hall-selector-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .select-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-            min-width: 260px;
-        }
-
-        .select-group label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            white-space: nowrap;
-        }
-
-        select, input {
-            background-color: var(--bg-card);
-            color: var(--text-main);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-
-        select:focus, input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 18px;
-            font-size: 0.92rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-        }
-
-        .btn-secondary:hover {
-            background: #334155;
-            box-shadow: none;
-        }
-
-        /* 3. Curved Cinema Screen */
-        .screen-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 20px 0 35px 0;
-            perspective: 500px;
-        }
-
-        .screen {
-            width: 85%;
-            height: 18px;
-            background: linear-gradient(to bottom, #ffffff, rgba(255, 255, 255, 0.1));
-            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-            box-shadow: 0 10px 30px var(--screen-glow);
-            transform: rotateX(-20deg);
-        }
-
-        .screen-label {
-            margin-top: 10px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 6px;
-            color: var(--accent-blue);
-            text-transform: uppercase;
-        }
-
-        /* 4. Interactive Seating Grid */
-        .seating-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: auto;
-            padding: 10px 0 20px 0;
-        }
-
-        .seat-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .seat-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .row-label {
-            width: 24px;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-align: center;
-            user-select: none;
-        }
-
-        .seat {
-            width: 38px;
-            height: 36px;
-            border-radius: 8px 8px 4px 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            user-select: none;
-            position: relative;
-            color: white;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-        }
-
-        .seat::after {
-            content: '';
-            position: absolute;
-            bottom: -3px;
-            left: 5px;
-            right: 5px;
-            height: 3px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 2px;
-        }
-
-        /* Standard seat (blue) */
-        .seat.standard {
-            background-color: var(--standard-seat);
-        }
-
-        .seat.standard:hover:not(.disabled) {
-            background-color: var(--standard-hover);
-            transform: translateY(-3px) scale(1.08);
-            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
-        }
-
-        /* VIP seat (amber) */
-        .seat.vip {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            border: 1px solid #fcd34d;
-        }
-
-        .seat.vip:hover:not(.disabled) {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            transform: translateY(-3px) scale(1.08);
-            box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
-        }
-
-        /* Selected seat (green) */
-        .seat.selected {
-            background: linear-gradient(135deg, #10b981, #059669) !important;
-            transform: scale(1.1) !important;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7) !important;
-            border: 1px solid #6ee7b7 !important;
-            animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.9); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1.1); }
-        }
-
-        /* Disabled seat (gray) */
-        .seat.disabled {
-            background-color: var(--disabled-seat);
-            color: #64748b;
-            cursor: not-allowed;
-            opacity: 0.5;
-            box-shadow: none;
-        }
-
-        /* Legend */
-        .legend {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-            margin: 24px 0 12px 0;
-            padding-top: 16px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-        }
-
-        .legend-swatch {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
-        }
-
-        .legend-standard { background-color: var(--standard-seat); }
-        .legend-vip { background: linear-gradient(135deg, #f59e0b, #d97706); border: 1px solid #fcd34d; }
-        .legend-selected { background-color: var(--selected-seat); }
-        .legend-disabled { background-color: var(--disabled-seat); }
-
-        /* Selection Summary */
-        .selection-summary {
-            margin-top: 20px;
-            padding: 16px;
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-        }
-
-        .summary-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .summary-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .selected-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            min-height: 32px;
-            align-items: center;
-        }
-
-        .chip {
-            background: #047857;
-            color: #ecfdf5;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border: 1px solid #10b981;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .chip-type {
-            font-size: 0.7rem;
-            opacity: 0.8;
-            font-weight: 400;
-        }
-
-        .empty-selection {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-style: italic;
-        }
-
-        /* 5. Create Hall Form */
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .notice-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            margin-top: 8px;
-        }
-
-        .badge-live {
-            background: rgba(16, 185, 129, 0.15);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .badge-fallback {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: #1e293b;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            border-left: 4px solid var(--accent-blue);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            font-size: 0.9rem;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.3s ease;
-            z-index: 999;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-    <!-- 1. Student & Module Banner -->
+    <!-- Student & Module Banner -->
     <header class="banner">
         <div class="banner-titles">
             <h1>🎬 Cinema Reservation System</h1>
-            <p>Seating Layout & Hall Allocation (IT25102154)</p>
+            <p>Seating Layout &amp; Hall Allocation (IT25102154)</p>
         </div>
-        <div>
+        <div class="banner-badges">
             <span class="student-badge">Student ID: IT25102154</span>
+            <span id="connectionBadge" class="notice-badge badge-live">● Connected to Backend</span>
         </div>
     </header>
 
-    <div class="main-content">
-        <!-- Left Column: Interactive Layout Viewer -->
-        <div class="card">
-            <!-- 2. Hall Selector Dropdown -->
-            <div class="hall-selector-bar">
-                <div class="select-group">
-                    <label for="hallSelect">Cinema Hall:</label>
-                    <select id="hallSelect">
-                        <option value="">Loading cinema halls...</option>
-                    </select>
-                </div>
-                <button class="btn btn-secondary" id="refreshBtn" title="Reload from Backend">
-                    ↻ Refresh
-                </button>
-            </div>
+    <!-- CRUD Architecture Overview Banner -->
+    <div class="crud-overview-bar">
+        <div class="crud-overview-title">⚡ Full CRUD REST Endpoints:</div>
+        <div class="crud-tags">
+            <span class="crud-tag tag-create"><b>[C] CREATE:</b> POST /api/halls</span>
+            <span class="crud-tag tag-read"><b>[R] READ:</b> GET /api/halls &amp; /seats</span>
+            <span class="crud-tag tag-update"><b>[U] UPDATE:</b> PUT /api/halls/{id} &amp; /seats/{id}/status</span>
+            <span class="crud-tag tag-delete"><b>[D] DELETE:</b> DELETE /api/halls/{id}</span>
+        </div>
+    </div>
 
-            <!-- Hall Status Indicator -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span id="hallDetails" style="font-size: 0.9rem; color: var(--text-muted);">
-                    Loading layout details...
-                </span>
-                <span id="connectionBadge" class="notice-badge badge-live">● Connected to Backend</span>
+    <!-- Admin Hall Management (CRUD) Panel -->
+    <section class="card">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">⚙️ Admin Hall Management (CRUD)</h2>
+                <p class="panel-subtitle">Create, view, edit cinema halls, and delete halls with cascaded seat removal.</p>
             </div>
+            <button class="btn btn-secondary" id="refreshHallsBtn" title="Reload Halls Directory">
+                ↻ Refresh Directory
+            </button>
+        </div>
 
-            <!-- 3. Curved Cinema Screen -->
-            <div class="screen-container">
-                <div class="screen"></div>
-                <div class="screen-label">SCREEN</div>
-            </div>
-
-            <!-- 4. Interactive Seating Grid -->
-            <div class="seating-wrapper">
-                <div id="seatGrid" class="seat-grid">
-                    <!-- Dynamic seats generated via JS -->
+        <div class="admin-grid">
+            <!-- [R] Read Section: Hall Directory Table -->
+            <div class="table-section">
+                <div class="section-subheading">
+                    <h3>📋 [R] Cinema Halls Directory</h3>
+                    <span class="count-badge" id="hallCountBadge">0 halls</span>
                 </div>
-            </div>
-
-            <!-- Legend -->
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-swatch legend-standard"></div>
-                    <span>Standard (Rs. 1,200)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-vip"></div>
-                    <span>VIP (Rs. 2,000)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-selected"></div>
-                    <span>Selected</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-swatch legend-disabled"></div>
-                    <span>Inactive / Disabled</span>
+                <div class="table-responsive">
+                    <table class="halls-table" id="hallsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Hall Name</th>
+                                <th>Capacity</th>
+                                <th>Type</th>
+                                <th>Base Price (LKR)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hallsTableBody">
+                            <tr>
+                                <td colspan="6" class="table-loading">Loading halls directory...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Selection Summary -->
-            <div class="selection-summary">
-                <div class="summary-header">
-                    <span class="summary-title">Selected Seats:</span>
-                    <button class="btn btn-secondary" id="clearSelectionBtn" style="padding: 4px 10px; font-size: 0.78rem;">Clear</button>
+            <!-- [C] Create Section: Allocate New Hall Form -->
+            <div class="form-section">
+                <div class="section-subheading">
+                    <h3>➕ [C] Allocate New Hall</h3>
                 </div>
-                <div id="selectedChips" class="selected-chips">
-                    <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
-                </div>
-                <div id="priceSummary" style="margin-top: 10px; font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">
-                    Total: Rs. 0.00
+                <p class="panel-subtitle" style="margin-bottom: 16px;">
+                    Enter hall specifications to generate its seating layout matrix (Rows A–Z).
+                </p>
+
+                <form id="createHallForm">
+                    <div class="form-group">
+                        <label for="hallName">Hall Name</label>
+                        <input type="text" id="hallName" placeholder="e.g. Hall 2 - Dolby Atmos" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalRows">Total Rows (A-Z)</label>
+                            <input type="number" id="totalRows" min="1" max="26" value="5" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="seatsPerRow">Seats Per Row</label>
+                            <input type="number" id="seatsPerRow" min="1" max="20" value="8" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="hallType">Hall Type</label>
+                            <select id="hallType" required>
+                                <option value="IMAX">IMAX</option>
+                                <option value="VIP">VIP</option>
+                                <option value="STANDARD" selected>STANDARD</option>
+                                <option value="3D">3D Dolby</option>
+                                <option value="4DX">4DX</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="basePrice">Base Price in LKR (Rs.)</label>
+                            <input type="number" id="basePrice" min="100" step="50" value="1200" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-create" id="submitHallBtn">
+                        ➕ Allocate Hall &amp; Auto-Generate Seats (POST)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Seating Layout Viewer & [U] Seat Status Toggle -->
+    <section class="card layout-card" id="seatingLayoutSection">
+        <div class="layout-header">
+            <div>
+                <h2 class="panel-title">🪑 Interactive Seating Layout &amp; Hall Allocation</h2>
+                <p class="panel-subtitle">View seating matrices, select seats for customer booking, or toggle maintenance status.</p>
+            </div>
+            <div class="hall-select-wrapper">
+                <label for="hallSelect">Hall:</label>
+                <select id="hallSelect">
+                    <option value="">Loading halls...</option>
+                </select>
+                <button class="btn btn-secondary" id="refreshLayoutBtn" title="Refresh Seating Layout">↻</button>
+            </div>
+        </div>
+
+        <!-- Hall Info & Mode Switcher -->
+        <div class="layout-toolbar">
+            <div class="hall-info-bar">
+                <span id="hallDetails">Loading layout details...</span>
+            </div>
+
+            <!-- Mode Switcher -->
+            <div class="mode-switcher-container">
+                <span class="mode-label">Seat Click Mode:</span>
+                <div class="mode-buttons">
+                    <button type="button" class="btn-mode active" id="modeBookingBtn" title="Select seats for ticket reservation">
+                        🎟️ Booking Selection
+                    </button>
+                    <button type="button" class="btn-mode" id="modeMaintenanceBtn" title="Click any seat to toggle its maintenance status">
+                        🛠️ [U] Admin Maintenance Toggle
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: 5. Create Hall Form -->
-        <div class="card">
-            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; color: white;">
-                ➕ Allocate New Hall
-            </h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
-                Create a cinema hall and auto-generate its seating layout matrix (Rows A–Z).
-            </p>
+        <!-- Mode Notification Alert -->
+        <div id="modeAlert" class="mode-alert mode-booking">
+            <span id="modeAlertText">🎟️ Booking Mode Active: Click any available seat to select it for ticket reservation.</span>
+        </div>
 
-            <form id="createHallForm">
-                <div class="form-group">
-                    <label for="hallName">Hall Name</label>
-                    <input type="text" id="hallName" placeholder="e.g. Hall 2 - Dolby Atmos" required>
-                </div>
+        <!-- Cinema Curved Screen -->
+        <div class="screen-container">
+            <div class="screen"></div>
+            <div class="screen-label">CINEMA SCREEN</div>
+        </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="totalRows">Total Rows (A-Z)</label>
-                        <input type="number" id="totalRows" min="1" max="26" value="5" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="seatsPerRow">Seats Per Row</label>
-                        <input type="number" id="seatsPerRow" min="1" max="20" value="8" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="hallType">Hall Type</label>
-                    <select id="hallType" required>
-                        <option value="IMAX">IMAX</option>
-                        <option value="VIP">VIP</option>
-                        <option value="STANDARD" selected>STANDARD</option>
-                        <option value="3D">3D Dolby</option>
-                        <option value="4DX">4DX</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn" id="submitHallBtn" style="width: 100%; margin-top: 10px;">
-                    Allocate Hall & Generate Layout
-                </button>
-            </form>
-
-            <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-color); font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
-                <strong>💡 Note:</strong>
-                Creating a hall sends a <code>POST /api/halls</code> request. The backend auto-generates the seat matrix with VIP seating for front rows.
+        <!-- Interactive Seating Grid -->
+        <div class="seating-wrapper">
+            <div id="seatGrid" class="seat-grid">
+                <!-- Seats dynamically rendered via app.js -->
             </div>
         </div>
+
+        <!-- [U] Seat Inspector & Maintenance Toggle -->
+        <div class="seat-inspector" id="seatInspector">
+            <div class="inspector-header">
+                <span class="inspector-title">🔍 [U] Seat Inspector &amp; Status Toggle (PUT /api/halls/seats/{id}/status)</span>
+                <span class="inspector-hint">Click any seat above to inspect or toggle its status</span>
+            </div>
+            <div class="inspector-body" id="inspectorBody">
+                <div class="inspector-empty">No seat selected. Click any seat in the layout above to inspect details and toggle status!</div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-swatch legend-standard"></div>
+                <span id="legendStandardPrice">Standard (Rs. 1,200)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-vip"></div>
+                <span id="legendVipPrice">VIP (Rs. 2,000)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-selected"></div>
+                <span>Selected for Booking</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-swatch legend-disabled"></div>
+                <span>Under Maintenance / Disabled</span>
+            </div>
+        </div>
+
+        <!-- Selection Summary -->
+        <div class="selection-summary">
+            <div class="summary-header">
+                <span class="summary-title">Selected Seats (Customer Booking):</span>
+                <button class="btn btn-secondary" id="clearSelectionBtn" style="padding: 4px 10px; font-size: 0.78rem;">Clear Selection</button>
+            </div>
+            <div id="selectedChips" class="selected-chips">
+                <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
+            </div>
+            <div id="priceSummary" class="price-summary">
+                Total: Rs. 0.00
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- [U] Edit Hall Modal -->
+<div id="editHallModal" class="modal-backdrop">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>✏️ [U] Edit Cinema Hall</h3>
+            <button class="modal-close" id="closeEditModalBtn">&times;</button>
+        </div>
+        <form id="editHallForm">
+            <input type="hidden" id="editHallId">
+            <div class="form-group">
+                <label for="editHallName">Hall Name</label>
+                <input type="text" id="editHallName" required>
+            </div>
+            <div class="form-group">
+                <label for="editHallType">Hall Type</label>
+                <select id="editHallType" required>
+                    <option value="IMAX">IMAX</option>
+                    <option value="VIP">VIP</option>
+                    <option value="STANDARD">STANDARD</option>
+                    <option value="3D">3D Dolby</option>
+                    <option value="4DX">4DX</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editBasePrice">Base Ticket Price in LKR (Rs.)</label>
+                <input type="number" id="editBasePrice" min="100" step="50" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="cancelEditModalBtn">Cancel</button>
+                <button type="submit" class="btn btn-update" id="saveEditHallBtn">💾 Save Changes (PUT)</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Toast Notification -->
 <div id="toast" class="toast">Action completed successfully</div>
 
-<script>
-    // State management
-    let currentHalls = [];
-    let currentSeats = [];
-    const selectedSeats = new Map(); // seatId -> seatObj
-
-    // DOM Elements
-    const hallSelect = document.getElementById('hallSelect');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const seatGrid = document.getElementById('seatGrid');
-    const hallDetails = document.getElementById('hallDetails');
-    const connectionBadge = document.getElementById('connectionBadge');
-    const selectedChips = document.getElementById('selectedChips');
-    const priceSummary = document.getElementById('priceSummary');
-    const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-    const createHallForm = document.getElementById('createHallForm');
-    const toast = document.getElementById('toast');
-
-    // 6. Fallback Mock Data Generator (5 rows x 8 seats)
-    function generateFallbackData() {
-        const mockHalls = [
-            { id: 1, name: "Hall 1 - IMAX (Demo)", totalRows: 5, seatsPerRow: 8, hallType: "IMAX", totalCapacity: 40 }
-        ];
-
-        const mockSeats = [];
-        const rows = ['A', 'B', 'C', 'D', 'E'];
-        let idCounter = 1;
-
-        rows.forEach((rowLetter, rIdx) => {
-            const isVip = (rIdx < 2); // First 2 rows VIP
-            for (let s = 1; s <= 8; s++) {
-                mockSeats.push({
-                    id: idCounter++,
-                    hallId: 1,
-                    seatRow: rowLetter,
-                    seatNumber: s,
-                    seatType: isVip ? 'VIP' : 'STANDARD',
-                    isActive: true
-                });
-            }
-        });
-
-        return { mockHalls, mockSeats };
-    }
-
-    // Show Toast Notification
-    function showToast(message, isError = false) {
-        toast.textContent = message;
-        toast.style.borderLeftColor = isError ? '#ef4444' : '#10b981';
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3500);
-    }
-
-    // Set connection status badge
-    function setConnectionStatus(isLive, message = '') {
-        if (isLive) {
-            connectionBadge.className = 'notice-badge badge-live';
-            connectionBadge.textContent = '● Connected to Backend';
-        } else {
-            connectionBadge.className = 'notice-badge badge-fallback';
-            connectionBadge.textContent = message || '● Fallback / Demo Mode';
-        }
-    }
-
-    // 2. Load all cinema halls from GET /api/halls
-    async function loadHalls() {
-        try {
-            const response = await fetch('/api/halls');
-            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-            const data = await response.json();
-
-            if (!Array.isArray(data) || data.length === 0) {
-                throw new Error("No halls returned from backend.");
-            }
-
-            currentHalls = data;
-            setConnectionStatus(true);
-            populateHallDropdown(currentHalls);
-        } catch (error) {
-            console.warn("Backend unavailable or empty, falling back to mock data:", error);
-            const { mockHalls } = generateFallbackData();
-            currentHalls = mockHalls;
-            setConnectionStatus(false, '● Fallback Data Active');
-            populateHallDropdown(currentHalls);
-            showToast("Loaded fallback mock layout (Backend unreachable)", true);
-        }
-    }
-
-    // Populate Hall Dropdown
-    function populateHallDropdown(halls) {
-        hallSelect.innerHTML = '';
-        halls.forEach(hall => {
-            const opt = document.createElement('option');
-            opt.value = hall.id;
-            opt.textContent = `${hall.name} (${hall.hallType}) - ${hall.totalCapacity || (hall.totalRows * hall.seatsPerRow)} seats`;
-            hallSelect.appendChild(opt);
-        });
-
-        if (halls.length > 0) {
-            hallSelect.value = halls[0].id;
-            loadSeatsForHall(halls[0].id);
-        }
-    }
-
-    // 4. Fetch Seats from GET /api/halls/{id}/seats
-    async function loadSeatsForHall(hallId) {
-        selectedSeats.clear();
-        updateSelectionSummary();
-
-        const hall = currentHalls.find(h => h.id == hallId);
-        if (hall) {
-            hallDetails.textContent = `${hall.name} | Type: ${hall.hallType} | Capacity: ${hall.totalCapacity || (hall.totalRows * hall.seatsPerRow)} seats`;
-        }
-
-        try {
-            const response = await fetch(`/api/halls/${hallId}/seats`);
-            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-            const seats = await response.json();
-
-            if (!Array.isArray(seats) || seats.length === 0) {
-                throw new Error("No seats found for this hall.");
-            }
-
-            currentSeats = seats;
-            renderSeatGrid(currentSeats);
-        } catch (error) {
-            console.warn("Error fetching seats, using fallback generator:", error);
-            const { mockSeats } = generateFallbackData();
-            currentSeats = mockSeats;
-            renderSeatGrid(currentSeats);
-            setConnectionStatus(false, '● Fallback Layout Mode');
-        }
-    }
-
-    // Render Seating Grid
-    function renderSeatGrid(seats) {
-        seatGrid.innerHTML = '';
-
-        // Group seats by row
-        const rowMap = new Map();
-        seats.forEach(seat => {
-            if (!rowMap.has(seat.seatRow)) {
-                rowMap.set(seat.seatRow, []);
-            }
-            rowMap.get(seat.seatRow).push(seat);
-        });
-
-        // Sort rows alphabetically
-        const sortedRows = Array.from(rowMap.keys()).sort();
-
-        sortedRows.forEach(rowLetter => {
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'seat-row';
-
-            // Left Row Label
-            const leftLabel = document.createElement('span');
-            leftLabel.className = 'row-label';
-            leftLabel.textContent = rowLetter;
-            rowDiv.appendChild(leftLabel);
-
-            // Seats in this row
-            const rowSeats = rowMap.get(rowLetter).sort((a, b) => a.seatNumber - b.seatNumber);
-            rowSeats.forEach(seat => {
-                const seatBtn = document.createElement('div');
-                const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-                const isActive = (seat.isActive !== false && seat.active !== false);
-
-                seatBtn.className = `seat ${isVip ? 'vip' : 'standard'} ${!isActive ? 'disabled' : ''}`;
-                seatBtn.textContent = seat.seatNumber;
-                seatBtn.title = `Seat ${seat.seatRow}${seat.seatNumber} (${seat.seatType}) - ${isActive ? 'Available' : 'Disabled'}`;
-                seatBtn.dataset.seatId = seat.id;
-
-                if (isActive) {
-                    seatBtn.addEventListener('click', () => toggleSeatSelection(seat, seatBtn));
-                }
-
-                rowDiv.appendChild(seatBtn);
-            });
-
-            // Right Row Label
-            const rightLabel = document.createElement('span');
-            rightLabel.className = 'row-label';
-            rightLabel.textContent = rowLetter;
-            rowDiv.appendChild(rightLabel);
-
-            seatGrid.appendChild(rowDiv);
-        });
-    }
-
-    // Toggle Seat Selection (Green status)
-    function toggleSeatSelection(seat, element) {
-        if (selectedSeats.has(seat.id)) {
-            selectedSeats.delete(seat.id);
-            element.classList.remove('selected');
-        } else {
-            selectedSeats.set(seat.id, seat);
-            element.classList.add('selected');
-        }
-        updateSelectionSummary();
-    }
-
-    // Update Selection Summary below grid
-    function updateSelectionSummary() {
-        selectedChips.innerHTML = '';
-        if (selectedSeats.size === 0) {
-            selectedChips.innerHTML = '<span class="empty-selection">No seats selected yet. Click any available seat above!</span>';
-            priceSummary.textContent = 'Total: Rs. 0.00';
-            return;
-        }
-
-        let totalPrice = 0;
-        selectedSeats.forEach(seat => {
-            const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-            const price = isVip ? 2000 : 1200;
-            totalPrice += price;
-
-            const chip = document.createElement('div');
-            chip.className = 'chip';
-            chip.innerHTML = `
-                <span>${seat.seatRow}${seat.seatNumber}</span>
-                <span class="chip-type">(${seat.seatType} - Rs. ${price.toLocaleString()})</span>
-            `;
-            selectedChips.appendChild(chip);
-        });
-
-        priceSummary.textContent = `Total: Rs. ${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
-    }
-
-    // Clear selection
-    clearSelectionBtn.addEventListener('click', () => {
-        selectedSeats.clear();
-        document.querySelectorAll('.seat.selected').forEach(el => el.classList.remove('selected'));
-        updateSelectionSummary();
-    });
-
-    // 5. Handle Create Hall Form Submission (POST /api/halls)
-    createHallForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitBtn = document.getElementById('submitHallBtn');
-
-        const hallPayload = {
-            name: document.getElementById('hallName').value.trim(),
-            totalRows: parseInt(document.getElementById('totalRows').value, 10),
-            seatsPerRow: parseInt(document.getElementById('seatsPerRow').value, 10),
-            hallType: document.getElementById('hallType').value
-        };
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Allocating & Generating Layout...';
-
-        try {
-            const response = await fetch('/api/halls', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(hallPayload)
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error || `Server responded with ${response.status}`);
-            }
-
-            const newHall = await response.json();
-            showToast(`Cinema hall "${newHall.name}" created successfully!`);
-
-            // Reset form
-            createHallForm.reset();
-            document.getElementById('totalRows').value = 5;
-            document.getElementById('seatsPerRow').value = 8;
-
-            // Refresh halls list and auto-select newly created hall
-            await loadHalls();
-            hallSelect.value = newHall.id;
-            await loadSeatsForHall(newHall.id);
-
-        } catch (error) {
-            console.error("Error creating hall:", error);
-            showToast(`Error: ${error.message}`, true);
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Allocate Hall & Generate Layout';
-        }
-    });
-
-    // Event Listeners
-    hallSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-            loadSeatsForHall(e.target.value);
-        }
-    });
-
-    refreshBtn.addEventListener('click', () => {
-        loadHalls();
-        showToast("Refreshed halls list from backend");
-    });
-
-    // Initial Load
-    loadHalls();
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>

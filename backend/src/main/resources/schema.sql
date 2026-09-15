@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS halls (
     name VARCHAR(255) NOT NULL,
     total_rows INT NOT NULL,
     seats_per_row INT NOT NULL,
-    hall_type VARCHAR(50) NOT NULL
+    hall_type VARCHAR(50) NOT NULL,
+    base_price DECIMAL(10,2) DEFAULT 1200.00
 );
 
 -- Seats Table for Seating Layout and Hall Allocation
@@ -27,8 +28,8 @@ CREATE TABLE IF NOT EXISTS seats (
 -- ==========================================================
 
 -- Insert Cinema Hall "Hall 1 - IMAX" (Rows A-E, 8 seats per row = 40 seats)
-INSERT INTO halls (id, name, total_rows, seats_per_row, hall_type)
-VALUES (1, 'Hall 1 - IMAX', 5, 8, 'IMAX');
+INSERT INTO halls (id, name, total_rows, seats_per_row, hall_type, base_price)
+VALUES (1, 'Hall 1 - IMAX', 5, 8, 'IMAX', 1500.00);
 
 -- Insert Seats for Hall 1:
 -- Rows A & B: VIP seats (A1-A8, B1-B8)

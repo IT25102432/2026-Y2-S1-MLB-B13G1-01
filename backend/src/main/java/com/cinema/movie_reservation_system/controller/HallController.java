@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * REST Controller for Seating Layout and Hall Allocation.
- * Exposes endpoints for managing cinema halls and their seating layouts.
+ * Exposes full CRUD endpoints for managing cinema halls and their seating layouts.
  * Part of Seating Layout and Hall Allocation (IT25102154).
  */
 @RestController
@@ -27,7 +27,7 @@ public class HallController {
     }
 
     /**
-     * GET /api/halls
+     * [READ] GET /api/halls
      * Retrieve a list of all cinema halls.
      *
      * @return 200 OK with list of halls.
@@ -39,7 +39,7 @@ public class HallController {
     }
 
     /**
-     * GET /api/halls/{id}
+     * [READ] GET /api/halls/{id}
      * Retrieve details of a specific cinema hall by ID.
      *
      * @param id The hall ID.
@@ -57,7 +57,7 @@ public class HallController {
     }
 
     /**
-     * GET /api/halls/{id}/seats
+     * [READ] GET /api/halls/{id}/seats
      * Retrieve all seats / seating layout for a specific hall.
      *
      * @param id The hall ID.
@@ -75,7 +75,7 @@ public class HallController {
     }
 
     /**
-     * POST /api/halls
+     * [CREATE] POST /api/halls
      * Create a new cinema hall and auto-generate its seating layout matrix.
      *
      * @param hall The hall details JSON payload (name, totalRows, seatsPerRow, hallType).
@@ -96,8 +96,54 @@ public class HallController {
     }
 
     /**
-     * PUT /api/halls/seats/{seatId}/status
-     * Toggle or update the active status of a specific seat.
+     * [UPDATE] PUT /api/halls/{id}
+     * Update an existing cinema hall's name or hall type.
+     *
+     * @param id          The ID of the hall to update.
+     * @param updatedHall The updated hall data.
+     * @return 200 OK with updated Hall, or 404 NOT FOUND.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateHall(@PathVariable Long id, @RequestBody Hall updatedHall) {
+        try {
+            Hall result = hallService.updateHall(id, updatedHall);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update cinema hall", "details", e.getMessage()));
+        }
+    }
+
+    /**
+     * [DELETE] DELETE /api/halls/{id}
+     * Delete a cinema hall and cascade delete all its associated seats.
+     *
+     * @param id The ID of the hall to delete.
+     * @return 200 OK with confirmation message, or 404 NOT FOUND.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteHall(@PathVariable Long id) {
+        try {
+            hallService.deleteHall(id);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Cinema hall #" + id + " and all its seats were deleted successfully.",
+                    "id", id
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to delete cinema hall", "details", e.getMessage()));
+        }
+    }
+
+    /**
+     * [UPDATE] PUT /api/halls/seats/{seatId}/status
+     * Toggle or update the active status of a specific seat (maintenance vs available).
      * If request body contains {"isActive": true/false}, it sets the status explicitly.
      * If no body is provided, it toggles the existing active status.
      *

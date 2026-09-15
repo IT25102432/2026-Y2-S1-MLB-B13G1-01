@@ -63,12 +63,54 @@ public class HallControllerTest {
 
     @Test
     void testCreateHall() {
-        Hall newHall = new Hall("Hall Controller Test", 2, 4, "STANDARD");
+        Hall newHall = new Hall("Hall Controller Test", 2, 4, "STANDARD", 1400.0);
         ResponseEntity<?> response = hallController.createHall(newHall);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         Hall created = (Hall) response.getBody();
         assertNotNull(created);
         assertNotNull(created.getId());
+        assertEquals(1400.0, created.getBasePrice());
+    }
+
+    @Test
+    void testUpdateHall() {
+        // Create a hall to update
+        Hall newHall = new Hall("Hall To Update", 2, 3, "STANDARD", 1200.0);
+        ResponseEntity<?> createResp = hallController.createHall(newHall);
+        Hall created = (Hall) createResp.getBody();
+        assertNotNull(created);
+
+        // Update name, type, and base price
+        Hall updatePayload = new Hall();
+        updatePayload.setName("Hall Updated Name");
+        updatePayload.setHallType("VIP");
+        updatePayload.setBasePrice(2200.0);
+
+        ResponseEntity<?> updateResp = hallController.updateHall(created.getId(), updatePayload);
+        assertEquals(HttpStatus.OK, updateResp.getStatusCode());
+        Hall updated = (Hall) updateResp.getBody();
+        assertNotNull(updated);
+        assertEquals("Hall Updated Name", updated.getName());
+        assertEquals("VIP", updated.getHallType());
+        assertEquals(2200.0, updated.getBasePrice());
+    }
+
+    @Test
+    void testDeleteHall() {
+        // Create a hall to delete
+        Hall newHall = new Hall("Hall To Delete", 2, 2, "STANDARD");
+        ResponseEntity<?> createResp = hallController.createHall(newHall);
+        Hall created = (Hall) createResp.getBody();
+        assertNotNull(created);
+        Long id = created.getId();
+
+        // Delete the hall
+        ResponseEntity<?> deleteResp = hallController.deleteHall(id);
+        assertEquals(HttpStatus.OK, deleteResp.getStatusCode());
+
+        // Verify hall is deleted
+        ResponseEntity<?> getResp = hallController.getHallById(id);
+        assertEquals(HttpStatus.NOT_FOUND, getResp.getStatusCode());
     }
 
     @Test

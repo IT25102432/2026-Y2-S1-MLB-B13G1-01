@@ -11,6 +11,7 @@ public class Hall {
     private int totalRows;
     private int seatsPerRow;
     private String hallType;
+    private Double basePrice = 1200.0;
 
     // Default constructor
     public Hall() {
@@ -22,6 +23,15 @@ public class Hall {
         this.totalRows = totalRows;
         this.seatsPerRow = seatsPerRow;
         this.hallType = hallType;
+        this.basePrice = 1200.0;
+    }
+
+    public Hall(String name, int totalRows, int seatsPerRow, String hallType, Double basePrice) {
+        this.name = name;
+        this.totalRows = totalRows;
+        this.seatsPerRow = seatsPerRow;
+        this.hallType = hallType;
+        this.basePrice = (basePrice != null && basePrice > 0) ? basePrice : 1200.0;
     }
 
     // Full parameterized constructor
@@ -31,6 +41,16 @@ public class Hall {
         this.totalRows = totalRows;
         this.seatsPerRow = seatsPerRow;
         this.hallType = hallType;
+        this.basePrice = 1200.0;
+    }
+
+    public Hall(Long id, String name, int totalRows, int seatsPerRow, String hallType, Double basePrice) {
+        this.id = id;
+        this.name = name;
+        this.totalRows = totalRows;
+        this.seatsPerRow = seatsPerRow;
+        this.hallType = hallType;
+        this.basePrice = (basePrice != null && basePrice > 0) ? basePrice : 1200.0;
     }
 
     // Getters and Setters
@@ -74,6 +94,14 @@ public class Hall {
         this.hallType = hallType;
     }
 
+    public Double getBasePrice() {
+        return basePrice;
+    }
+
+    public void setBasePrice(Double basePrice) {
+        this.basePrice = basePrice;
+    }
+
     // Helper method to compute total capacity
     public int getTotalCapacity() {
         return this.totalRows * this.seatsPerRow;
@@ -87,6 +115,7 @@ public class Hall {
                 ", totalRows=" + totalRows +
                 ", seatsPerRow=" + seatsPerRow +
                 ", hallType='" + hallType + '\'' +
+                ", basePrice=" + basePrice +
                 ", totalCapacity=" + getTotalCapacity() +
                 '}';
     }
