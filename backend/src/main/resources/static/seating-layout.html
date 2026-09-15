@@ -526,11 +526,11 @@
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-swatch legend-standard"></div>
-                    <span>Standard ($10)</span>
+                    <span>Standard (Rs. 1,200)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-swatch legend-vip"></div>
-                    <span>VIP ($15)</span>
+                    <span>VIP (Rs. 2,000)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-swatch legend-selected"></div>
@@ -552,7 +552,7 @@
                     <span class="empty-selection">No seats selected yet. Click any available seat above!</span>
                 </div>
                 <div id="priceSummary" style="margin-top: 10px; font-size: 0.88rem; color: var(--text-muted); font-weight: 600;">
-                    Total: $0.00
+                    Total: Rs. 0.00
                 </div>
             </div>
         </div>
@@ -816,26 +816,26 @@
         selectedChips.innerHTML = '';
         if (selectedSeats.size === 0) {
             selectedChips.innerHTML = '<span class="empty-selection">No seats selected yet. Click any available seat above!</span>';
-            priceSummary.textContent = 'Total: $0.00';
+            priceSummary.textContent = 'Total: Rs. 0.00';
             return;
         }
 
         let totalPrice = 0;
         selectedSeats.forEach(seat => {
             const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-            const price = isVip ? 15 : 10;
+            const price = isVip ? 2000 : 1200;
             totalPrice += price;
 
             const chip = document.createElement('div');
             chip.className = 'chip';
             chip.innerHTML = `
                 <span>${seat.seatRow}${seat.seatNumber}</span>
-                <span class="chip-type">(${seat.seatType} - $${price})</span>
+                <span class="chip-type">(${seat.seatType} - Rs. ${price.toLocaleString()})</span>
             `;
             selectedChips.appendChild(chip);
         });
 
-        priceSummary.textContent = `Total: $${totalPrice.toFixed(2)} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
+        priceSummary.textContent = `Total: Rs. ${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
     }
 
     // Clear selection

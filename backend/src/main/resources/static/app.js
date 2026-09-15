@@ -8,6 +8,10 @@ const API_BASE_URL = (window.location.port === '8080' || window.location.hostnam
     ? ''
     : 'http://localhost:8080';
 
+// Pricing Constants (Sri Lankan Rupees - LKR / Rs.)
+const VIP_SEAT_PRICE_LKR = 2000;
+const STANDARD_SEAT_PRICE_LKR = 1200;
+
 // State management
 let currentHalls = [];
 let currentSeats = [];
@@ -217,26 +221,26 @@ function updateSelectionSummary() {
     selectedChips.innerHTML = '';
     if (selectedSeats.size === 0) {
         selectedChips.innerHTML = '<span class="empty-selection">No seats selected yet. Click any available seat above!</span>';
-        priceSummary.textContent = 'Total: $0.00';
+        priceSummary.textContent = 'Total: Rs. 0.00';
         return;
     }
 
     let totalPrice = 0;
     selectedSeats.forEach(seat => {
         const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-        const price = isVip ? 15 : 10;
+        const price = isVip ? VIP_SEAT_PRICE_LKR : STANDARD_SEAT_PRICE_LKR;
         totalPrice += price;
 
         const chip = document.createElement('div');
         chip.className = 'chip';
         chip.innerHTML = `
             <span>${seat.seatRow}${seat.seatNumber}</span>
-            <span class="chip-type">(${seat.seatType} - $${price})</span>
+            <span class="chip-type">(${seat.seatType} - Rs. ${price.toLocaleString()})</span>
         `;
         selectedChips.appendChild(chip);
     });
 
-    priceSummary.textContent = `Total: $${totalPrice.toFixed(2)} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
+    priceSummary.textContent = `Total: Rs. ${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
 }
 
 // Clear Selection Button
