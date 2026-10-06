@@ -1,742 +1,1157 @@
 /**
- * Frontend JavaScript for Cinema Seating Layout & Hall Allocation
- * Component Student ID: IT25102154
- * Implements Full CRUD REST API operations:
- *   [C] CREATE: POST /api/halls
- *   [R] READ:   GET /api/halls & GET /api/halls/{id}/seats
- *   [U] UPDATE: PUT /api/halls/{id} & PUT /api/halls/seats/{seatId}/status
- *   [D] DELETE: DELETE /api/halls/{id}
+ * CineBook - Web-Based Cinema Ticket Reservation System
+ * Consolidated Frontend JavaScript Application across all 6 Modules
  */
 
-// API Base URL (defaults to current origin if served via Spring Boot, or localhost:8080 if opened standalone)
-const API_BASE_URL = (window.location.port === '8080' || window.location.hostname.length > 0) && window.location.protocol.startsWith('http')
-    ? ''
-    : 'http://localhost:8080';
+const API_BASE = ''; // Same origin
 
-// State management
-let currentHalls = [];
-let currentHall = null;
-let currentSeats = [];
-const selectedSeats = new Map(); // seatId -> seatObj
-let activeMode = 'booking'; // 'booking' | 'maintenance'
-let inspectedSeat = null;
+// Global State
+let selectedBookingSeats = [];
+let currentShowtimeDetails = null;
+let appliedVoucher = null;
+let currentHallSeats = [];
 
-// DOM Elements
-const connectionBadge = document.getElementById('connectionBadge');
-const hallsTableBody = document.getElementById('hallsTableBody');
-const hallCountBadge = document.getElementById('hallCountBadge');
-const refreshHallsBtn = document.getElementById('refreshHallsBtn');
-const createHallForm = document.getElementById('createHallForm');
-const submitHallBtn = document.getElementById('submitHallBtn');
+// ======================================================================
+// 1. INITIALIZATION & NAVIGATION
+// ======================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigationTabs();
+    initSeatTooltip();
+    loadDashboardStats();
+    loadHalls();
+    loadMovies();
+    loadShowtimes();
+    loadBookings();
+    loadRefunds();
+    loadVouchers();
 
-const editHallModal = document.getElementById('editHallModal');
-const editHallForm = document.getElementById('editHallForm');
-const editHallId = document.getElementById('editHallId');
-const editHallName = document.getElementById('editHallName');
-const editHallType = document.getElementById('editHallType');
-const editBasePrice = document.getElementById('editBasePrice');
-const closeEditModalBtn = document.getElementById('closeEditModalBtn');
-const cancelEditModalBtn = document.getElementById('cancelEditModalBtn');
-const saveEditHallBtn = document.getElementById('saveEditHallBtn');
+    // Auto-refresh dashboard stats every 20 seconds
+    setInterval(loadDashboardStats, 20000);
+});
 
-const hallSelect = document.getElementById('hallSelect');
-const refreshLayoutBtn = document.getElementById('refreshLayoutBtn');
-const hallDetails = document.getElementById('hallDetails');
-const seatGrid = document.getElementById('seatGrid');
-const seatInspector = document.getElementById('seatInspector');
-const inspectorBody = document.getElementById('inspectorBody');
+function initNavigationTabs() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
 
-const modeBookingBtn = document.getElementById('modeBookingBtn');
-const modeMaintenanceBtn = document.getElementById('modeMaintenanceBtn');
-const modeAlert = document.getElementById('modeAlert');
-const modeAlertText = document.getElementById('modeAlertText');
+            tab.classList.add('active');
+            const targetPaneId = tab.getAttribute('data-tab');
+            const targetPane = document.getElementById(targetPaneId);
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
 
-const legendStandardPrice = document.getElementById('legendStandardPrice');
-const legendVipPrice = document.getElementById('legendVipPrice');
-
-const selectedChips = document.getElementById('selectedChips');
-const priceSummary = document.getElementById('priceSummary');
-const clearSelectionBtn = document.getElementById('clearSelectionBtn');
-const toast = document.getElementById('toast');
-
-// Number formatter for Sri Lankan Rupees (LKR / Rs.)
-function formatLkr(amount) {
-    const num = Number(amount) || 0;
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-// Fallback Mock Data Generator (when backend is not reachable)
-function generateFallbackData() {
-    const mockHalls = [
-        { id: 1, name: "Hall 1 - IMAX (Demo)", totalRows: 5, seatsPerRow: 8, hallType: "IMAX", basePrice: 1500, totalCapacity: 40 },
-        { id: 2, name: "Hall 2 - VIP Lounge (Demo)", totalRows: 4, seatsPerRow: 6, hallType: "VIP", basePrice: 2000, totalCapacity: 24 },
-        { id: 3, name: "Hall 3 - Standard Dolby (Demo)", totalRows: 5, seatsPerRow: 8, hallType: "STANDARD", basePrice: 1200, totalCapacity: 40 }
-    ];
-
-    const mockSeats = [];
-    const rows = ['A', 'B', 'C', 'D', 'E'];
-    let idCounter = 1;
-
-    rows.forEach((rowLetter, rIdx) => {
-        const isVip = (rIdx < 2); // First 2 rows are VIP
-        for (let s = 1; s <= 8; s++) {
-            mockSeats.push({
-                id: idCounter++,
-                hallId: 1,
-                seatRow: rowLetter,
-                seatNumber: s,
-                seatType: isVip ? 'VIP' : 'STANDARD',
-                isActive: (s !== 3 || rIdx !== 1) // Set B3 to disabled as demo
-            });
-        }
+            // Lazy refresh when tab opens
+            if (targetPaneId === 'tab-halls') { loadHalls(); }
+            else if (targetPaneId === 'tab-movies') { loadMovies(); }
+            else if (targetPaneId === 'tab-showtimes') { loadShowtimes(); }
+            else if (targetPaneId === 'tab-reservations') { loadShowtimeDropdownForBooking(); loadBookings(); }
+            else if (targetPaneId === 'tab-refunds') { loadRefunds(); }
+            else if (targetPaneId === 'tab-vouchers') { loadVouchers(); }
+        });
     });
-
-    return { mockHalls, mockSeats };
 }
 
-// Show Toast Notification
-function showToast(message, isError = false) {
-    if (!toast) return;
-    toast.textContent = message;
-    toast.style.borderLeftColor = isError ? '#ef4444' : '#10b981';
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3800);
-}
+// ======================================================================
+// 2. DASHBOARD LIVE STATISTICS
+// ======================================================================
+async function loadDashboardStats() {
+    try {
+        const res = await fetch(`${API_BASE}/api/dashboard/stats`);
+        if (!res.ok) throw new Error('Failed to fetch stats');
+        const stats = await res.json();
 
-// Set connection status badge
-function setConnectionStatus(isLive, message = '') {
-    if (!connectionBadge) return;
-    if (isLive) {
-        connectionBadge.className = 'notice-badge badge-live';
-        connectionBadge.textContent = '● Connected to Backend';
-    } else {
-        connectionBadge.className = 'notice-badge badge-fallback';
-        connectionBadge.textContent = message || '● Fallback / Demo Mode';
+        document.getElementById('statTotalCapacity').textContent = stats.totalCapacity ?? 0;
+        document.getElementById('statAvailableSeats').textContent = stats.availableSeats ?? 0;
+        document.getElementById('statMaintenanceSeats').textContent = stats.underMaintenanceSeats ?? 0;
+        document.getElementById('statVipCount').textContent = stats.vipCount ?? 0;
+        document.getElementById('statStandardCount').textContent = stats.standardCount ?? 0;
+
+        const badge = document.getElementById('backendStatusBadge');
+        if (badge) {
+            badge.className = 'status-badge badge-online';
+            badge.textContent = '● Backend Online';
+        }
+    } catch (err) {
+        const badge = document.getElementById('backendStatusBadge');
+        if (badge) {
+            badge.className = 'status-badge badge-error';
+            badge.textContent = '● Backend Offline';
+        }
     }
 }
 
-// ============================================================================
-// [R] READ OPERATIONS: GET /api/halls & GET /api/halls/{id}/seats
-// ============================================================================
+// ======================================================================
+// 3. MODULE 1: SEATING LAYOUT & HALL ALLOCATION (IT25102154)
+// ======================================================================
+async function loadHalls() {
+    const tbody = document.getElementById('hallsTableBody');
+    const layoutSelect = document.getElementById('layoutHallSelect');
+    const showtimeHallSelect = document.getElementById('showtimeHallSelect');
 
-/**
- * Fetch all cinema halls from backend (GET /api/halls)
- * and update both the Hall Directory table and the Layout dropdown.
- */
-async function loadHalls(targetHallIdToSelect = null) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/halls`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const res = await fetch(`${API_BASE}/api/halls`);
+        if (!res.ok) throw new Error('Could not fetch halls');
+        const halls = await res.json();
 
-        if (!Array.isArray(data) || data.length === 0) {
-            throw new Error("No cinema halls returned from backend.");
+        document.getElementById('hallsBadge').textContent = `${halls.length} halls`;
+
+        if (halls.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading-td">No cinema halls found. Create one to begin.</td></tr>`;
+            return;
         }
 
-        currentHalls = data;
-        setConnectionStatus(true);
-        renderHallsTable(currentHalls);
-        populateHallDropdown(currentHalls, targetHallIdToSelect);
+        tbody.innerHTML = halls.map(h => `
+            <tr>
+                <td><b>#${h.id}</b></td>
+                <td><b>${escapeHtml(h.name)}</b></td>
+                <td>${h.totalRows} × ${h.seatsPerRow} (${h.totalCapacity} seats)</td>
+                <td><span class="badge">${escapeHtml(h.hallType)}</span></td>
+                <td>Rs. ${formatCurrency(h.basePrice)}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditHallModal(${h.id}, '${escapeHtml(h.name)}', '${h.hallType}', ${h.basePrice})">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteHall(${h.id})">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
 
-    } catch (error) {
-        console.warn("Backend unreachable or empty, falling back to mock mode:", error);
-        const { mockHalls } = generateFallbackData();
-        currentHalls = mockHalls;
-        setConnectionStatus(false, '● Fallback / Demo Mode');
-        renderHallsTable(currentHalls);
-        populateHallDropdown(currentHalls, targetHallIdToSelect);
-        showToast("Loaded fallback mock layout (Backend unreachable)", true);
+        // Populate Layout Hall Select and Showtime Hall Select
+        const currentSelected = layoutSelect.value;
+        layoutSelect.innerHTML = halls.map(h => `
+            <option value="${h.id}">${escapeHtml(h.name)} (${h.hallType} - ${h.totalCapacity} seats)</option>
+        `).join('');
+
+        showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>` + halls.map(h => `
+            <option value="${h.id}">${escapeHtml(h.name)} (${h.hallType})</option>
+        `).join('');
+
+        if (halls.length > 0) {
+            const hallToLoad = currentSelected && halls.some(h => h.id == currentSelected) ? currentSelected : halls[0].id;
+            layoutSelect.value = hallToLoad;
+            loadHallSeatingLayout(hallToLoad);
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="loading-td" style="color:var(--danger)">Error loading halls: ${err.message}</td></tr>`;
     }
 }
 
-/**
- * Render [R] Cinema Halls Directory Table
- */
-function renderHallsTable(halls) {
-    if (!hallsTableBody) return;
-    hallsTableBody.innerHTML = '';
+async function handleCreateHall(e) {
+    e.preventDefault();
+    const name = document.getElementById('hallName').value.trim();
+    const totalRows = parseInt(document.getElementById('totalRows').value);
+    const seatsPerRow = parseInt(document.getElementById('seatsPerRow').value);
+    const hallType = document.getElementById('hallType').value;
+    const basePrice = parseFloat(document.getElementById('basePrice').value);
 
-    if (hallCountBadge) {
-        hallCountBadge.textContent = `${halls.length} hall${halls.length === 1 ? '' : 's'}`;
+    // Validation
+    if (totalRows < 1 || totalRows > 26) {
+        showToast('Total rows must be between 1 and 26.', 'warning');
+        return;
     }
-
-    if (!halls || halls.length === 0) {
-        hallsTableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="table-loading">No cinema halls found. Allocate one above!</td>
-            </tr>
-        `;
+    if (seatsPerRow < 1 || seatsPerRow > 30) {
+        showToast('Seats per row must be between 1 and 30.', 'warning');
+        return;
+    }
+    if (basePrice <= 0) {
+        showToast('Base price must be greater than 0 LKR.', 'warning');
         return;
     }
 
-    halls.forEach(hall => {
-        const tr = document.createElement('tr');
-        if (currentHall && currentHall.id === hall.id) {
-            tr.classList.add('active-row');
-        }
+    try {
+        const res = await fetch(`${API_BASE}/api/halls`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, totalRows, seatsPerRow, hallType, basePrice })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create hall');
 
-        const capacity = hall.totalCapacity || (hall.totalRows * hall.seatsPerRow);
-        const hallTypeLower = (hall.hallType || 'STANDARD').toLowerCase().replace(/\s+/g, '');
-        const basePrice = hall.basePrice || 1200;
-
-        tr.innerHTML = `
-            <td><strong>#${hall.id}</strong></td>
-            <td><strong>${hall.name}</strong></td>
-            <td>${capacity} seats <span style="color: var(--text-muted); font-size: 0.8rem;">(${hall.totalRows}R × ${hall.seatsPerRow}C)</span></td>
-            <td><span class="type-badge type-${hallTypeLower}">${hall.hallType}</span></td>
-            <td><strong>Rs. ${formatLkr(basePrice)}</strong></td>
-            <td>
-                <div class="table-actions">
-                    <button class="btn btn-xs btn-view" onclick="viewHallLayout(${hall.id})" title="View Seating Layout">
-                        👁️ View Layout
-                    </button>
-                    <button class="btn btn-xs btn-edit" onclick="openEditModal(${hall.id})" title="Edit Hall Details">
-                        ✏️ Edit
-                    </button>
-                    <button class="btn btn-xs btn-delete" onclick="deleteHall(${hall.id}, '${hall.name.replace(/'/g, "\\'")}')" title="Delete Hall & Seats">
-                        🗑️ Delete
-                    </button>
-                </div>
-            </td>
-        `;
-        hallsTableBody.appendChild(tr);
-    });
-}
-
-/**
- * Populate Layout Hall Dropdown
- */
-function populateHallDropdown(halls, targetIdToSelect = null) {
-    if (!hallSelect) return;
-    hallSelect.innerHTML = '';
-
-    halls.forEach(hall => {
-        const opt = document.createElement('option');
-        opt.value = hall.id;
-        const capacity = hall.totalCapacity || (hall.totalRows * hall.seatsPerRow);
-        opt.textContent = `${hall.name} (${hall.hallType}) - ${capacity} seats`;
-        hallSelect.appendChild(opt);
-    });
-
-    let selectedId = targetIdToSelect;
-    if (!selectedId && currentHall && halls.some(h => h.id == currentHall.id)) {
-        selectedId = currentHall.id;
-    } else if (!selectedId && halls.length > 0) {
-        selectedId = halls[0].id;
-    }
-
-    if (selectedId) {
-        hallSelect.value = selectedId;
-        loadSeatsForHall(selectedId);
+        showToast(`🎉 Hall "${data.name}" created with ${data.totalCapacity} generated seats!`, 'success');
+        document.getElementById('createHallForm').reset();
+        document.getElementById('totalRows').value = 5;
+        document.getElementById('seatsPerRow').value = 8;
+        document.getElementById('basePrice').value = 1200;
+        loadHalls();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
     }
 }
 
-/**
- * Switch viewer to selected hall and smoothly scroll to Seating Layout section
- */
-window.viewHallLayout = function(hallId) {
-    if (hallSelect) {
-        hallSelect.value = hallId;
-    }
-    loadSeatsForHall(hallId);
-
-    const layoutSection = document.getElementById('seatingLayoutSection');
-    if (layoutSection) {
-        layoutSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    showToast(`Loaded seating layout for Hall #${hallId}`);
-};
-
-/**
- * Fetch Seats for Hall (GET /api/halls/{id}/seats)
- */
-async function loadSeatsForHall(hallId) {
-    selectedSeats.clear();
-    updateSelectionSummary();
-    inspectedSeat = null;
-    clearSeatInspector();
-
-    currentHall = currentHalls.find(h => h.id == hallId) || null;
-    renderHallsTable(currentHalls); // Update active row highlight
-
-    const basePrice = (currentHall && currentHall.basePrice) ? currentHall.basePrice : 1200;
-    const vipPrice = (currentHall && currentHall.hallType === 'VIP') ? basePrice : Math.round(basePrice * 1.6);
-    const standardPrice = basePrice;
-
-    if (legendStandardPrice) {
-        legendStandardPrice.textContent = `Standard (Rs. ${formatLkr(standardPrice)})`;
-    }
-    if (legendVipPrice) {
-        legendVipPrice.textContent = `VIP (Rs. ${formatLkr(vipPrice)})`;
-    }
-
-    if (currentHall) {
-        const capacity = currentHall.totalCapacity || (currentHall.totalRows * currentHall.seatsPerRow);
-        hallDetails.textContent = `${currentHall.name} | Type: ${currentHall.hallType} | Base: Rs. ${formatLkr(basePrice)} | Capacity: ${capacity} seats (${currentHall.totalRows} rows × ${currentHall.seatsPerRow} cols)`;
-    }
+async function loadHallSeatingLayout(hallId) {
+    if (!hallId) return;
+    const container = document.getElementById('seatMatrixContainer');
+    container.innerHTML = `<div class="empty-matrix-msg">Generating seating matrix...</div>`;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/halls/${hallId}/seats`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const seats = await response.json();
+        const res = await fetch(`${API_BASE}/api/halls/${hallId}/seats`);
+        if (!res.ok) throw new Error('Could not load seats for this hall');
+        const seats = await res.json();
+        currentHallSeats = seats;
 
-        if (!Array.isArray(seats) || seats.length === 0) {
-            throw new Error("No seats found for this hall.");
-        }
-
-        currentSeats = seats;
-        renderSeatGrid(currentSeats);
-
-    } catch (error) {
-        console.warn("Error fetching seats from backend, using fallback generator:", error);
-        const { mockSeats } = generateFallbackData();
-        currentSeats = mockSeats;
-        renderSeatGrid(currentSeats);
-        setConnectionStatus(false, '● Fallback Layout Mode');
+        renderSeatingMatrix(seats, container, async (seat) => {
+            // Admin mode: toggle maintenance
+            try {
+                const patchRes = await fetch(`${API_BASE}/api/seats/${seat.id}/toggle`, { method: 'PATCH' });
+                if (!patchRes.ok) throw new Error('Failed to toggle seat status');
+                const updated = await patchRes.json();
+                showToast(`Seat ${updated.seatLabel} is now ${updated.isActive ? 'AVAILABLE' : 'UNDER MAINTENANCE'}`, 'info');
+                loadHallSeatingLayout(hallId);
+                loadDashboardStats();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
+        });
+    } catch (err) {
+        container.innerHTML = `<div class="empty-matrix-msg" style="color:var(--danger)">${err.message}</div>`;
     }
 }
 
-/**
- * Render Interactive Seating Grid
- */
-function renderSeatGrid(seats) {
-    if (!seatGrid) return;
-    seatGrid.innerHTML = '';
+function renderSeatingMatrix(seats, container, onSeatClick) {
+    if (!seats || seats.length === 0) {
+        container.innerHTML = `<div class="empty-matrix-msg">No seats found for this hall layout.</div>`;
+        return;
+    }
 
     // Group seats by row
-    const rowMap = new Map();
-    seats.forEach(seat => {
-        if (!rowMap.has(seat.seatRow)) {
-            rowMap.set(seat.seatRow, []);
-        }
-        rowMap.get(seat.seatRow).push(seat);
+    const rowsMap = new Map();
+    seats.forEach(s => {
+        const row = s.seatRow;
+        if (!rowsMap.has(row)) rowsMap.set(row, []);
+        rowsMap.get(row).push(s);
     });
 
-    // Sort rows alphabetically (A, B, C...)
-    const sortedRows = Array.from(rowMap.keys()).sort();
-
-    sortedRows.forEach(rowLetter => {
+    container.innerHTML = '';
+    rowsMap.forEach((rowSeats, rowLabel) => {
         const rowDiv = document.createElement('div');
-        rowDiv.className = 'seat-row';
+        rowDiv.className = 'matrix-row';
 
-        // Left Row Label
-        const leftLabel = document.createElement('span');
-        leftLabel.className = 'row-label';
-        leftLabel.textContent = rowLetter;
-        rowDiv.appendChild(leftLabel);
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'row-label';
+        labelSpan.textContent = rowLabel;
+        rowDiv.appendChild(labelSpan);
 
-        // Sort seats by number
-        const rowSeats = rowMap.get(rowLetter).sort((a, b) => a.seatNumber - b.seatNumber);
+        rowSeats.sort((a, b) => a.seatNumber - b.seatNumber);
         rowSeats.forEach(seat => {
-            const seatBtn = document.createElement('div');
-            const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-            const isActive = (seat.isActive !== false && seat.active !== false);
-            const isSelected = selectedSeats.has(seat.id);
-            const isInspected = inspectedSeat && inspectedSeat.id === seat.id;
-
-            seatBtn.className = `seat ${isVip ? 'vip' : 'standard'} ${!isActive ? 'disabled' : ''} ${isSelected ? 'selected' : ''} ${isInspected ? 'inspected-seat' : ''}`;
+            const seatBtn = document.createElement('button');
+            seatBtn.className = 'seat-btn';
             seatBtn.textContent = seat.seatNumber;
-            seatBtn.dataset.seatId = seat.id;
-            seatBtn.title = `Seat ${seat.seatRow}${seat.seatNumber} (${seat.seatType}) - ${isActive ? 'Available' : 'Under Maintenance / Disabled'}`;
 
-            // Click Handler
+            const isVip = (seat.seatType || '').toUpperCase() === 'VIP';
+            const price = seat.priceLkr || (isVip ? 2000 : 1200);
+
+            if (!seat.isActive || seat.status === 'MAINTENANCE') {
+                seatBtn.classList.add('seat-maintenance');
+            } else if (seat.status === 'BOOKED') {
+                seatBtn.classList.add('seat-booked');
+                seatBtn.disabled = true;
+            } else if (isVip) {
+                seatBtn.classList.add('seat-vip');
+            } else {
+                seatBtn.classList.add('seat-standard');
+            }
+
+            // Tooltip events
+            seatBtn.addEventListener('mouseenter', (e) => {
+                const statusStr = (!seat.isActive || seat.status === 'MAINTENANCE')
+                    ? '🛠️ Under Maintenance'
+                    : (seat.status === 'BOOKED' ? '🔒 Booked / Reserved' : '🟢 Available');
+                showTooltip(e, `Row ${seat.seatRow} - Seat ${seat.seatNumber} | ${seat.seatType} | Rs. ${formatCurrency(price)} [${statusStr}]`);
+            });
+            seatBtn.addEventListener('mousemove', moveTooltip);
+            seatBtn.addEventListener('mouseleave', hideTooltip);
+
             seatBtn.addEventListener('click', () => {
-                if (activeMode === 'maintenance') {
-                    // Admin Maintenance Toggle Mode: Click toggles status directly!
-                    toggleSeatMaintenance(seat.id);
-                } else {
-                    // Customer Booking Mode: Click selects for booking and inspects
-                    inspectSeat(seat);
-                    if (isActive) {
-                        toggleSeatSelection(seat, seatBtn);
-                    } else {
-                        showToast(`Seat ${seat.seatRow}${seat.seatNumber} is Under Maintenance and cannot be booked.`, true);
-                    }
-                }
+                if (onSeatClick) onSeatClick(seat, seatBtn);
             });
 
             rowDiv.appendChild(seatBtn);
         });
 
-        // Right Row Label
-        const rightLabel = document.createElement('span');
-        rightLabel.className = 'row-label';
-        rightLabel.textContent = rowLetter;
-        rowDiv.appendChild(rightLabel);
-
-        seatGrid.appendChild(rowDiv);
+        container.appendChild(rowDiv);
     });
 }
 
-// ============================================================================
-// [C] CREATE OPERATION: POST /api/halls
-// ============================================================================
+function openEditHallModal(id, name, type, price) {
+    document.getElementById('editHallId').value = id;
+    document.getElementById('editHallName').value = name;
+    document.getElementById('editHallType').value = type;
+    document.getElementById('editHallBasePrice').value = price;
+    document.getElementById('editHallModal').classList.add('show');
+}
 
-createHallForm.addEventListener('submit', async (e) => {
+function closeEditHallModal() {
+    document.getElementById('editHallModal').classList.remove('show');
+}
+
+async function handleSaveEditHall(e) {
     e.preventDefault();
-
-    const hallPayload = {
-        name: document.getElementById('hallName').value.trim(),
-        totalRows: parseInt(document.getElementById('totalRows').value, 10),
-        seatsPerRow: parseInt(document.getElementById('seatsPerRow').value, 10),
-        hallType: document.getElementById('hallType').value,
-        basePrice: parseFloat(document.getElementById('basePrice').value) || 1200.0
-    };
-
-    submitHallBtn.disabled = true;
-    submitHallBtn.textContent = 'Allocating & Generating Seats...';
+    const id = document.getElementById('editHallId').value;
+    const name = document.getElementById('editHallName').value.trim();
+    const hallType = document.getElementById('editHallType').value;
+    const basePrice = parseFloat(document.getElementById('editHallBasePrice').value);
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/halls`, {
+        const res = await fetch(`${API_BASE}/api/halls/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, hallType, basePrice })
+        });
+        if (!res.ok) throw new Error('Failed to update hall');
+        showToast(`Hall #${id} updated successfully!`, 'success');
+        closeEditHallModal();
+        loadHalls();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function deleteHall(id) {
+    if (!confirm(`Are you sure you want to delete Cinema Hall #${id} and ALL its generated seats?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/halls/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete hall');
+        showToast(`Cinema hall #${id} and associated seats deleted.`, 'info');
+        loadHalls();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ======================================================================
+// 4. MODULE 2: MOVIE CATALOG & DETAILS MANAGEMENT (IT25101311)
+// ======================================================================
+let allMoviesList = [];
+let movieFilterStatus = null;
+
+async function loadMovies() {
+    const container = document.getElementById('movieGridContainer');
+    const showtimeMovieSelect = document.getElementById('showtimeMovieSelect');
+
+    try {
+        let url = `${API_BASE}/api/movies`;
+        if (movieFilterStatus) {
+            url += `?status=${movieFilterStatus}`;
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to load movies');
+        const movies = await res.json();
+        allMoviesList = movies;
+
+        if (movies.length === 0) {
+            container.innerHTML = `<div class="loading-placeholder">No movies found under this filter.</div>`;
+            return;
+        }
+
+        container.innerHTML = movies.map(m => {
+            const isArchived = m.status === 'ARCHIVED';
+            const poster = m.posterUrl && m.posterUrl.startsWith('http')
+                ? m.posterUrl
+                : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=400&q=80';
+
+            return `
+                <div class="movie-card">
+                    <div class="movie-poster-box">
+                        <img src="${poster}" alt="${escapeHtml(m.title)}" class="movie-poster-img" onerror="this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=400&q=80'">
+                        <span class="movie-rating-badge">${escapeHtml(m.rating || 'PG')}</span>
+                        <span class="movie-status-pill ${isArchived ? 'status-archived' : 'status-active'}">${escapeHtml(m.status)}</span>
+                    </div>
+                    <div class="movie-body">
+                        <h4 class="movie-title">${escapeHtml(m.title)}</h4>
+                        <div class="movie-meta">⏱️ ${m.durationMins} mins | 🎭 ${escapeHtml(m.genre)}</div>
+                        <p class="movie-desc">${escapeHtml(m.description || 'No description provided.')}</p>
+                        <div class="movie-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="openEditMovieModal(${m.id})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteMovie(${m.id})">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Populate showtime movie select (only active movies)
+        const activeMovies = movies.filter(m => m.status === 'ACTIVE');
+        showtimeMovieSelect.innerHTML = `<option value="">-- Choose Movie --</option>` + activeMovies.map(m => `
+            <option value="${m.id}">${escapeHtml(m.title)} (${m.durationMins}m)</option>
+        `).join('');
+
+    } catch (err) {
+        container.innerHTML = `<div class="loading-placeholder" style="color:var(--danger)">Error: ${err.message}</div>`;
+    }
+}
+
+function filterMovies(status, btn) {
+    movieFilterStatus = status;
+    document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    loadMovies();
+}
+
+function openAddMovieModal() {
+    document.getElementById('movieModalTitle').textContent = 'Add New Movie';
+    document.getElementById('movieModalForm').reset();
+    document.getElementById('modalMovieId').value = '';
+    document.getElementById('modalMovieDuration').value = 120;
+    document.getElementById('movieModal').classList.add('show');
+}
+
+function openEditMovieModal(id) {
+    const movie = allMoviesList.find(m => m.id === id);
+    if (!movie) return;
+    document.getElementById('movieModalTitle').textContent = `Edit Movie #${id}`;
+    document.getElementById('modalMovieId').value = movie.id;
+    document.getElementById('modalMovieTitle').value = movie.title;
+    document.getElementById('modalMovieGenre').value = movie.genre;
+    document.getElementById('modalMovieDuration').value = movie.durationMins;
+    document.getElementById('modalMovieRating').value = movie.rating;
+    document.getElementById('modalMovieStatus').value = movie.status;
+    document.getElementById('modalMoviePoster').value = movie.posterUrl || '';
+    document.getElementById('modalMovieDesc').value = movie.description || '';
+    document.getElementById('movieModal').classList.add('show');
+}
+
+function closeMovieModal() {
+    document.getElementById('movieModal').classList.remove('show');
+}
+
+async function handleSaveMovie(e) {
+    e.preventDefault();
+    const id = document.getElementById('modalMovieId').value;
+    const title = document.getElementById('modalMovieTitle').value.trim();
+    const genre = document.getElementById('modalMovieGenre').value.trim();
+    const durationMins = parseInt(document.getElementById('modalMovieDuration').value);
+    const rating = document.getElementById('modalMovieRating').value;
+    const status = document.getElementById('modalMovieStatus').value;
+    const posterUrl = document.getElementById('modalMoviePoster').value.trim();
+    const description = document.getElementById('modalMovieDesc').value.trim();
+
+    const payload = { title, genre, durationMins, rating, status, posterUrl, description };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API_BASE}/api/movies/${id}` : `${API_BASE}/api/movies`;
+
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save movie');
+
+        showToast(`Movie "${data.title}" saved successfully!`, 'success');
+        closeMovieModal();
+        loadMovies();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function deleteMovie(id) {
+    if (!confirm(`Delete movie #${id}?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/movies/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete movie');
+        showToast(`Movie #${id} was deleted.`, 'info');
+        loadMovies();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ======================================================================
+// 5. MODULE 3: SHOWTIME SCHEDULING (IT25103071)
+// ======================================================================
+let allShowtimesList = [];
+
+async function loadShowtimes() {
+    const tbody = document.getElementById('showtimesTableBody');
+    try {
+        const res = await fetch(`${API_BASE}/api/showtimes`);
+        if (!res.ok) throw new Error('Could not fetch showtimes');
+        const showtimes = await res.json();
+        allShowtimesList = showtimes;
+
+        document.getElementById('showtimesBadge').textContent = `${showtimes.length} sessions`;
+
+        if (showtimes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="loading-td">No scheduled screenings. Add a showtime session.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = showtimes.map(s => `
+            <tr>
+                <td><b>#${s.id}</b></td>
+                <td><b>${escapeHtml(s.movieTitle || 'Movie #' + s.movieId)}</b></td>
+                <td><span class="badge">${escapeHtml(s.hallName || 'Hall #' + s.hallId)}</span></td>
+                <td>${s.showDate}</td>
+                <td><b>${s.startTime}</b></td>
+                <td>${s.durationMins || 120} mins</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="deleteShowtime(${s.id})">🗑️ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+
+        loadShowtimeDropdownForBooking();
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading-td" style="color:var(--danger)">${err.message}</td></tr>`;
+    }
+}
+
+async function handleCreateShowtime(e) {
+    e.preventDefault();
+    const movieId = parseInt(document.getElementById('showtimeMovieSelect').value);
+    const hallId = parseInt(document.getElementById('showtimeHallSelect').value);
+    const showDate = document.getElementById('showDate').value;
+    const startTime = document.getElementById('startTime').value + ":00";
+
+    try {
+        const res = await fetch(`${API_BASE}/api/showtimes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hallPayload)
+            body: JSON.stringify({ movieId, hallId, showDate, startTime })
         });
+        const data = await res.json();
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `Server responded with ${response.status}`);
+        if (res.status === 409 || !res.ok) {
+            // Overlap conflict or validation error
+            throw new Error(data.error || 'Showtime scheduling conflict detected.');
         }
 
-        const newHall = await response.json();
-        showToast(`[C] Cinema hall "${newHall.name}" created with auto-generated seats!`);
-
-        // Reset form
-        createHallForm.reset();
-        document.getElementById('totalRows').value = 5;
-        document.getElementById('seatsPerRow').value = 8;
-        document.getElementById('basePrice').value = 1200;
-
-        // Reload halls and select newly created hall
-        await loadHalls(newHall.id);
-
-    } catch (error) {
-        console.error("Error creating cinema hall:", error);
-        showToast(`Error creating hall: ${error.message}`, true);
-    } finally {
-        submitHallBtn.disabled = false;
-        submitHallBtn.textContent = '➕ Allocate Hall & Auto-Generate Seats (POST)';
+        showToast(`🎉 Showtime scheduled successfully for ${data.movieTitle}!`, 'success');
+        document.getElementById('createShowtimeForm').reset();
+        loadShowtimes();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(`⚠️ Conflict: ${err.message}`, 'error');
     }
-});
-
-// ============================================================================
-// [U] UPDATE OPERATIONS: PUT /api/halls/{id} & PUT /api/halls/seats/{id}/status
-// ============================================================================
-
-/**
- * Open Edit Cinema Hall Modal (PUT /api/halls/{id})
- */
-window.openEditModal = function(hallId) {
-    const hall = currentHalls.find(h => h.id == hallId);
-    if (!hall) return;
-
-    editHallId.value = hall.id;
-    editHallName.value = hall.name;
-    editHallType.value = hall.hallType;
-    editBasePrice.value = hall.basePrice || 1200;
-
-    editHallModal.classList.add('show');
-};
-
-function closeEditModal() {
-    editHallModal.classList.remove('show');
 }
 
-closeEditModalBtn.addEventListener('click', closeEditModal);
-cancelEditModalBtn.addEventListener('click', closeEditModal);
-
-// Close on clicking backdrop outside modal box
-editHallModal.addEventListener('click', (e) => {
-    if (e.target === editHallModal) {
-        closeEditModal();
-    }
-});
-
-/**
- * Handle Edit Cinema Hall Form Submit (PUT /api/halls/{id})
- */
-editHallForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const hallId = editHallId.value;
-    const updatePayload = {
-        name: editHallName.value.trim(),
-        hallType: editHallType.value,
-        basePrice: parseFloat(editBasePrice.value) || 1200.0
-    };
-
-    saveEditHallBtn.disabled = true;
-    saveEditHallBtn.textContent = 'Saving Changes...';
-
+async function deleteShowtime(id) {
+    if (!confirm(`Delete showtime session #${id}? Any linked bookings will be removed.`)) return;
     try {
-        const response = await fetch(`${API_BASE_URL}/api/halls/${hallId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatePayload)
-        });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server responded with ${response.status}`);
-        }
-
-        const updatedHall = await response.json();
-        showToast(`[U] Cinema hall #${hallId} updated successfully!`);
-        closeEditModal();
-
-        // Reload halls and keep this hall active
-        await loadHalls(updatedHall.id);
-
-    } catch (error) {
-        console.error("Error updating cinema hall:", error);
-        showToast(`Error updating hall: ${error.message}`, true);
-    } finally {
-        saveEditHallBtn.disabled = false;
-        saveEditHallBtn.textContent = '💾 Save Changes (PUT)';
+        const res = await fetch(`${API_BASE}/api/showtimes/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete showtime');
+        showToast(`Showtime session #${id} deleted.`, 'info');
+        loadShowtimes();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
     }
-});
-
-/**
- * Toggle Seat Active / Maintenance Status (PUT /api/halls/seats/{seatId}/status)
- */
-window.toggleSeatMaintenance = async function(seatId, explicitStatus = null) {
-    const seat = currentSeats.find(s => s.id == seatId);
-    if (!seat) return;
-
-    const requestBody = explicitStatus !== null
-        ? JSON.stringify({ isActive: explicitStatus })
-        : null;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/halls/seats/${seatId}/status`, {
-            method: 'PUT',
-            headers: requestBody ? { 'Content-Type': 'application/json' } : {},
-            body: requestBody
-        });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server responded with ${response.status}`);
-        }
-
-        const updatedSeat = await response.json();
-
-        // Update local seat data
-        seat.isActive = (updatedSeat.isActive !== false && updatedSeat.active !== false);
-
-        // If seat became inactive, remove from customer booking selection
-        if (!seat.isActive && selectedSeats.has(seat.id)) {
-            selectedSeats.delete(seat.id);
-            updateSelectionSummary();
-        }
-
-        renderSeatGrid(currentSeats);
-        inspectSeat(seat);
-
-        const statusLabel = seat.isActive ? 'Available (Active)' : 'Under Maintenance (Inactive)';
-        showToast(`[U] Seat ${seat.seatRow}${seat.seatNumber} set to: ${statusLabel}`);
-
-    } catch (error) {
-        console.warn("Backend error updating seat status, updating locally:", error);
-        // Fallback local update
-        seat.isActive = explicitStatus !== null ? explicitStatus : !seat.isActive;
-        if (!seat.isActive && selectedSeats.has(seat.id)) {
-            selectedSeats.delete(seat.id);
-            updateSelectionSummary();
-        }
-        renderSeatGrid(currentSeats);
-        inspectSeat(seat);
-        showToast(`[Demo] Seat ${seat.seatRow}${seat.seatNumber} toggled to: ${seat.isActive ? 'Available' : 'Under Maintenance'}`);
-    }
-};
-
-/**
- * Display Seat Details in [U] Seat Inspector Panel
- */
-function inspectSeat(seat) {
-    inspectedSeat = seat;
-    const basePrice = (currentHall && currentHall.basePrice) ? currentHall.basePrice : 1200;
-    const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-    const price = isVip ? Math.round(basePrice * 1.6) : basePrice;
-    const isActive = (seat.isActive !== false && seat.active !== false);
-
-    inspectorBody.innerHTML = `
-        <div class="inspector-details">
-            <div class="inspector-meta">
-                <div class="inspector-seat-badge">${seat.seatRow}${seat.seatNumber}</div>
-                <div class="inspector-info-item">
-                    <span class="inspector-info-label">Hall</span>
-                    <span class="inspector-info-value">${currentHall ? currentHall.name : 'Hall'}</span>
-                </div>
-                <div class="inspector-info-item">
-                    <span class="inspector-info-label">Seat Type</span>
-                    <span class="inspector-info-value">${seat.seatType}</span>
-                </div>
-                <div class="inspector-info-item">
-                    <span class="inspector-info-label">Price (LKR)</span>
-                    <span class="inspector-info-value" style="color: #38bdf8;">Rs. ${formatLkr(price)}</span>
-                </div>
-                <div class="inspector-info-item">
-                    <span class="inspector-info-label">Current Status</span>
-                    <span class="status-pill ${isActive ? 'status-active' : 'status-maintenance'}">
-                        ${isActive ? '● Available' : '⚠️ Under Maintenance'}
-                    </span>
-                </div>
-            </div>
-            <div>
-                ${isActive
-                    ? `<button class="btn btn-xs btn-delete" onclick="toggleSeatMaintenance(${seat.id}, false)">
-                         🛠️ [U] Set to Under Maintenance (PUT)
-                       </button>`
-                    : `<button class="btn btn-xs btn-create" onclick="toggleSeatMaintenance(${seat.id}, true)">
-                         ✅ [U] Set to Available (PUT)
-                       </button>`
-                }
-            </div>
-        </div>
-    `;
-
-    // Highlight inspected seat in the grid
-    document.querySelectorAll('.seat').forEach(el => {
-        if (el.dataset.seatId == seat.id) {
-            el.classList.add('inspected-seat');
-        } else {
-            el.classList.remove('inspected-seat');
-        }
-    });
 }
 
-function clearSeatInspector() {
-    if (!inspectorBody) return;
-    inspectorBody.innerHTML = `
-        <div class="inspector-empty">No seat selected. Click any seat in the layout above to inspect details and toggle status!</div>
-    `;
-    document.querySelectorAll('.seat.inspected-seat').forEach(el => el.classList.remove('inspected-seat'));
+// ======================================================================
+// 6. MODULE 4: SEAT RESERVATIONS & BOOKING (IT25100266)
+// ======================================================================
+function loadShowtimeDropdownForBooking() {
+    const select = document.getElementById('bookingShowtimeSelect');
+    if (allShowtimesList.length === 0) {
+        select.innerHTML = `<option value="">No showtimes available</option>`;
+        return;
+    }
+    const currentVal = select.value;
+    select.innerHTML = `<option value="">-- Choose Showtime Session --</option>` + allShowtimesList.map(s => `
+        <option value="${s.id}">#${s.id} - ${escapeHtml(s.movieTitle)} in ${escapeHtml(s.hallName)} (${s.showDate} @ ${s.startTime})</option>
+    `).join('');
+
+    if (currentVal && allShowtimesList.some(s => s.id == currentVal)) {
+        select.value = currentVal;
+    } else if (allShowtimesList.length > 0) {
+        select.value = allShowtimesList[0].id;
+        loadBookingLayout(allShowtimesList[0].id);
+    }
 }
 
-// ============================================================================
-// [D] DELETE OPERATION: DELETE /api/halls/{id}
-// ============================================================================
+async function loadBookingLayout(showtimeId) {
+    selectedBookingSeats = [];
+    appliedVoucher = null;
+    document.getElementById('bookingVoucherInput').value = '';
+    document.getElementById('voucherMsg').textContent = '';
+    updateBookingSummary();
 
-window.deleteHall = async function(hallId, hallName) {
-    const isConfirmed = confirm(`⚠️ Are you sure you want to delete cinema hall "${hallName}" (ID: #${hallId}) and all its associated seats?\n\nThis action cannot be undone.`);
-    if (!isConfirmed) return;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/halls/${hallId}`, {
-            method: 'DELETE'
-        });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `Server responded with ${response.status}`);
-        }
-
-        showToast(`[D] Cinema hall #${hallId} and all associated seats deleted successfully!`);
-
-        // If currently inspected hall is deleted, reload and choose next hall
-        const nextHall = currentHalls.find(h => h.id != hallId);
-        await loadHalls(nextHall ? nextHall.id : null);
-
-    } catch (error) {
-        console.error("Error deleting cinema hall:", error);
-        showToast(`Error deleting hall: ${error.message}`, true);
-    }
-};
-
-// ============================================================================
-// CUSTOMER BOOKING SEAT SELECTION
-// ============================================================================
-
-function toggleSeatSelection(seat, element) {
-    if (selectedSeats.has(seat.id)) {
-        selectedSeats.delete(seat.id);
-        element.classList.remove('selected');
-    } else {
-        selectedSeats.set(seat.id, seat);
-        element.classList.add('selected');
-    }
-    updateSelectionSummary();
-}
-
-function updateSelectionSummary() {
-    if (!selectedChips || !priceSummary) return;
-    selectedChips.innerHTML = '';
-
-    if (selectedSeats.size === 0) {
-        selectedChips.innerHTML = '<span class="empty-selection">No seats selected yet. Click any available seat above!</span>';
-        priceSummary.textContent = 'Total: Rs. 0.00';
+    if (!showtimeId) {
+        document.getElementById('sessionBrief').innerHTML = `<p class="text-muted">No showtime selected.</p>`;
+        document.getElementById('bookingMatrixContainer').innerHTML = `<div class="empty-matrix-msg">Please select a showtime session to view live available seats.</div>`;
         return;
     }
 
-    const basePrice = (currentHall && currentHall.basePrice) ? currentHall.basePrice : 1200;
-    let totalPrice = 0;
+    const container = document.getElementById('bookingMatrixContainer');
+    container.innerHTML = `<div class="empty-matrix-msg">Loading real-time showtime seat availability...</div>`;
 
-    selectedSeats.forEach(seat => {
-        const isVip = (seat.seatType && seat.seatType.toUpperCase() === 'VIP');
-        const price = isVip ? Math.round(basePrice * 1.6) : basePrice;
-        totalPrice += price;
+    try {
+        const res = await fetch(`${API_BASE}/api/showtimes/${showtimeId}/seats`);
+        if (!res.ok) throw new Error('Could not load seats for this showtime');
+        const data = await res.json();
+        currentShowtimeDetails = data;
 
-        const chip = document.createElement('div');
-        chip.className = 'chip';
-        chip.innerHTML = `
-            <span>${seat.seatRow}${seat.seatNumber}</span>
-            <span class="chip-type">(${seat.seatType} - Rs. ${formatLkr(price)})</span>
+        const st = data.showtime;
+        const hl = data.hall;
+
+        document.getElementById('sessionBrief').innerHTML = `
+            <div><b>🎬 ${escapeHtml(st.movieTitle)}</b></div>
+            <div>🏛️ ${escapeHtml(hl.name)} (${hl.hallType})</div>
+            <div>📅 ${st.showDate} | 🕒 ${st.startTime}</div>
+            <div class="text-muted" style="margin-top:4px;">Base: Rs. ${formatCurrency(hl.basePrice)} | VIP: Rs. 2,000.00</div>
         `;
-        selectedChips.appendChild(chip);
-    });
 
-    priceSummary.textContent = `Total: Rs. ${formatLkr(totalPrice)} (${selectedSeats.size} seat${selectedSeats.size > 1 ? 's' : ''})`;
+        renderBookingSeatingMatrix(data.seats, container);
+    } catch (err) {
+        container.innerHTML = `<div class="empty-matrix-msg" style="color:var(--danger)">${err.message}</div>`;
+    }
 }
 
-clearSelectionBtn.addEventListener('click', () => {
-    selectedSeats.clear();
-    document.querySelectorAll('.seat.selected').forEach(el => el.classList.remove('selected'));
-    updateSelectionSummary();
-    showToast("Cleared seat selection");
-});
-
-// ============================================================================
-// MODE SWITCHER (Booking Selection vs Admin Maintenance Toggle)
-// ============================================================================
-
-modeBookingBtn.addEventListener('click', () => {
-    activeMode = 'booking';
-    modeBookingBtn.className = 'btn-mode active';
-    modeMaintenanceBtn.className = 'btn-mode';
-    modeAlert.className = 'mode-alert mode-booking';
-    modeAlertText.textContent = '🎟️ Booking Mode Active: Click any available seat to select it for ticket reservation.';
-});
-
-modeMaintenanceBtn.addEventListener('click', () => {
-    activeMode = 'maintenance';
-    modeBookingBtn.className = 'btn-mode';
-    modeMaintenanceBtn.className = 'btn-mode active btn-mode-admin';
-    modeAlert.className = 'mode-alert mode-maintenance';
-    modeAlertText.textContent = '🛠️ Admin Maintenance Mode Active: Click any seat on the grid to immediately toggle its maintenance status via PUT /api/halls/seats/{id}/status!';
-    showToast("Switched to Admin Maintenance Toggle Mode");
-});
-
-// ============================================================================
-// EVENT LISTENERS & INITIALIZATION
-// ============================================================================
-
-hallSelect.addEventListener('change', (e) => {
-    if (e.target.value) {
-        loadSeatsForHall(e.target.value);
+function renderBookingSeatingMatrix(seats, container) {
+    if (!seats || seats.length === 0) {
+        container.innerHTML = `<div class="empty-matrix-msg">No seats found for this session.</div>`;
+        return;
     }
-});
 
-refreshLayoutBtn.addEventListener('click', () => {
-    if (hallSelect.value) {
-        loadSeatsForHall(hallSelect.value);
-        showToast("Refreshed layout seats from backend");
+    const rowsMap = new Map();
+    seats.forEach(s => {
+        const row = s.seatRow;
+        if (!rowsMap.has(row)) rowsMap.set(row, []);
+        rowsMap.get(row).push(s);
+    });
+
+    container.innerHTML = '';
+    rowsMap.forEach((rowSeats, rowLabel) => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'matrix-row';
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'row-label';
+        labelSpan.textContent = rowLabel;
+        rowDiv.appendChild(labelSpan);
+
+        rowSeats.sort((a, b) => a.seatNumber - b.seatNumber);
+        rowSeats.forEach(seat => {
+            const seatBtn = document.createElement('button');
+            seatBtn.className = 'seat-btn';
+            seatBtn.textContent = seat.seatNumber;
+
+            const isVip = (seat.seatType || '').toUpperCase() === 'VIP';
+            const price = seat.priceLkr || (isVip ? 2000 : 1200);
+
+            if (seat.status === 'MAINTENANCE') {
+                seatBtn.classList.add('seat-maintenance');
+                seatBtn.disabled = true;
+            } else if (seat.status === 'BOOKED') {
+                seatBtn.classList.add('seat-booked');
+                seatBtn.disabled = true;
+            } else if (isVip) {
+                seatBtn.classList.add('seat-vip');
+            } else {
+                seatBtn.classList.add('seat-standard');
+            }
+
+            // Tooltip
+            seatBtn.addEventListener('mouseenter', (e) => {
+                let statusText = '🟢 Available';
+                if (seat.status === 'MAINTENANCE') statusText = '🛠️ Under Maintenance (Locked)';
+                if (seat.status === 'BOOKED') statusText = '🔒 Reserved / Booked';
+                showTooltip(e, `Row ${seat.seatRow} - Seat ${seat.seatNumber} | ${seat.seatType} | Rs. ${formatCurrency(price)} [${statusText}]`);
+            });
+            seatBtn.addEventListener('mousemove', moveTooltip);
+            seatBtn.addEventListener('mouseleave', hideTooltip);
+
+            // Click interaction (User Booking Selection with 10-seat limit)
+            seatBtn.addEventListener('click', () => {
+                if (seat.status === 'MAINTENANCE') {
+                    showToast(`⚠️ Seat ${seat.seatLabel} is under maintenance and cannot be booked.`, 'warning');
+                    return;
+                }
+                if (seat.status === 'BOOKED') {
+                    showToast(`⚠️ Seat ${seat.seatLabel} is already reserved for this session.`, 'warning');
+                    return;
+                }
+
+                const existingIdx = selectedBookingSeats.findIndex(s => s.id === seat.id);
+                if (existingIdx >= 0) {
+                    // Deselect
+                    selectedBookingSeats.splice(existingIdx, 1);
+                    seatBtn.classList.remove('seat-selected');
+                } else {
+                    // Enforce Maximum 10 seats restriction
+                    if (selectedBookingSeats.length >= 10) {
+                        showToast('⚠️ Booking limit reached! You can select a maximum of 10 seats per transaction.', 'warning');
+                        return;
+                    }
+                    selectedBookingSeats.push(seat);
+                    seatBtn.classList.add('seat-selected');
+                }
+
+                updateBookingSummary();
+            });
+
+            rowDiv.appendChild(seatBtn);
+        });
+
+        container.appendChild(rowDiv);
+    });
+}
+
+function updateBookingSummary() {
+    const countSpan = document.getElementById('selectedSeatsCount');
+    const tagsDiv = document.getElementById('selectedSeatsTags');
+    const subtotalSpan = document.getElementById('priceSubtotal');
+    const discountSpan = document.getElementById('priceDiscount');
+    const totalSpan = document.getElementById('priceTotal');
+    const confirmBtn = document.getElementById('confirmBookingBtn');
+
+    countSpan.textContent = selectedBookingSeats.length;
+
+    if (selectedBookingSeats.length === 0) {
+        tagsDiv.innerHTML = `<span class="empty-tag">No seats selected</span>`;
+        subtotalSpan.textContent = `Rs. 0.00`;
+        discountSpan.textContent = `- Rs. 0.00`;
+        totalSpan.textContent = `Rs. 0.00`;
+        confirmBtn.disabled = true;
+        return;
     }
-});
 
-refreshHallsBtn.addEventListener('click', () => {
-    loadHalls();
-    showToast("Refreshed halls directory from backend");
-});
+    confirmBtn.disabled = false;
+    tagsDiv.innerHTML = selectedBookingSeats.map(s => `
+        <span class="seat-tag">${s.seatLabel} (${s.seatType} - Rs. ${formatCurrency(s.priceLkr || 1200)})</span>
+    `).join('');
 
-// Initial Load
-loadHalls();
+    let subtotal = 0;
+    selectedBookingSeats.forEach(s => {
+        subtotal += (s.priceLkr || 1200);
+    });
+
+    let discount = 0;
+    if (appliedVoucher && appliedVoucher.discountAmountLkr) {
+        discount = appliedVoucher.discountAmountLkr;
+    }
+
+    const total = Math.max(0, subtotal - discount);
+
+    subtotalSpan.textContent = `Rs. ${formatCurrency(subtotal)}`;
+    discountSpan.textContent = `- Rs. ${formatCurrency(discount)}`;
+    totalSpan.textContent = `Rs. ${formatCurrency(total)}`;
+}
+
+async function applyVoucher() {
+    const code = document.getElementById('bookingVoucherInput').value.trim();
+    const msgDiv = document.getElementById('voucherMsg');
+
+    if (!code) {
+        msgDiv.className = 'voucher-msg error';
+        msgDiv.textContent = 'Please enter a voucher code.';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers/validate/${encodeURIComponent(code)}`);
+        const data = await res.json();
+        if (!res.ok || !data.valid) {
+            throw new Error(data.error || 'Invalid or expired voucher code');
+        }
+
+        appliedVoucher = data;
+        msgDiv.className = 'voucher-msg success';
+        msgDiv.textContent = `✓ ${data.message}`;
+        updateBookingSummary();
+        showToast(`🎉 Voucher ${data.code} applied! Saved Rs. ${formatCurrency(data.discountAmountLkr)}`, 'success');
+    } catch (err) {
+        appliedVoucher = null;
+        msgDiv.className = 'voucher-msg error';
+        msgDiv.textContent = `✗ ${err.message}`;
+        updateBookingSummary();
+        showToast(err.message, 'error');
+    }
+}
+
+async function handleConfirmBooking(e) {
+    e.preventDefault();
+    if (selectedBookingSeats.length === 0) {
+        showToast('Please select at least one seat to book.', 'warning');
+        return;
+    }
+    if (selectedBookingSeats.length > 10) {
+        showToast('Maximum 10 seats allowed per booking transaction.', 'warning');
+        return;
+    }
+
+    const showtimeId = parseInt(document.getElementById('bookingShowtimeSelect').value);
+    const customerName = document.getElementById('custName').value.trim();
+    const customerEmail = document.getElementById('custEmail').value.trim();
+    const seatIds = selectedBookingSeats.map(s => s.id);
+    const voucherCode = appliedVoucher ? appliedVoucher.code : null;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ showtimeId, customerName, customerEmail, seatIds, voucherCode })
+        });
+        const booking = await res.json();
+        if (!res.ok) throw new Error(booking.error || 'Failed to complete booking');
+
+        showToast(`🎉 Booking #${booking.id} confirmed for ${booking.customerName}!`, 'success');
+        openReceiptModal(booking);
+
+        // Reset state & reload
+        document.getElementById('confirmBookingForm').reset();
+        selectedBookingSeats = [];
+        appliedVoucher = null;
+        loadBookingLayout(showtimeId);
+        loadBookings();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(`Booking Failed: ${err.message}`, 'error');
+    }
+}
+
+function openReceiptModal(b) {
+    const container = document.getElementById('receiptContent');
+    const seatsStr = (b.seatLabels || []).join(', ');
+
+    container.innerHTML = `
+        <div class="receipt-item"><span><b>Booking Reference:</b></span><span>#${b.id}</span></div>
+        <div class="receipt-item"><span><b>Customer:</b></span><span>${escapeHtml(b.customerName)}</span></div>
+        <div class="receipt-item"><span><b>Email:</b></span><span>${escapeHtml(b.customerEmail)}</span></div>
+        <div class="receipt-item"><span><b>Movie:</b></span><span>${escapeHtml(b.movieTitle || 'Cinema Screening')}</span></div>
+        <div class="receipt-item"><span><b>Hall &amp; Screen:</b></span><span>${escapeHtml(b.hallName || 'Hall')}</span></div>
+        <div class="receipt-item"><span><b>Session:</b></span><span>${b.showDate || ''} @ ${b.startTime || ''}</span></div>
+        <div class="receipt-item"><span><b>Reserved Seats:</b></span><span><b>${seatsStr}</b></span></div>
+        ${b.voucherCode ? `<div class="receipt-item" style="color:var(--success)"><span><b>Voucher Applied:</b></span><span>${escapeHtml(b.voucherCode)} (-Rs. ${formatCurrency(b.discountLkr)})</span></div>` : ''}
+        <div class="receipt-total receipt-item"><span>Total Paid:</span><span>Rs. ${formatCurrency(b.totalAmountLkr)} LKR</span></div>
+    `;
+
+    document.getElementById('receiptModal').classList.add('show');
+}
+
+function closeReceiptModal() {
+    document.getElementById('receiptModal').classList.remove('show');
+}
+
+async function loadBookings() {
+    const tbody = document.getElementById('bookingsTableBody');
+    try {
+        const res = await fetch(`${API_BASE}/api/bookings`);
+        if (!res.ok) throw new Error('Could not fetch bookings');
+        const bookings = await res.json();
+
+        if (bookings.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="loading-td">No booking records yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = bookings.map(b => {
+            const seatsStr = (b.seatLabels || []).join(', ');
+            const isCancelled = b.status === 'CANCELLED';
+            return `
+                <tr>
+                    <td><b>#${b.id}</b></td>
+                    <td>${escapeHtml(b.customerName)}<br><small class="text-muted">${escapeHtml(b.customerEmail)}</small></td>
+                    <td><b>${escapeHtml(b.movieTitle || 'Movie #' + b.showtimeId)}</b></td>
+                    <td>${escapeHtml(b.hallName || '-')}</td>
+                    <td>${b.showDate || ''} ${b.startTime || ''}</td>
+                    <td><span class="badge">${seatsStr || '-'}</span></td>
+                    <td><b>Rs. ${formatCurrency(b.totalAmountLkr)}</b></td>
+                    <td><span class="status-badge-table ${isCancelled ? 'status-cancelled' : 'status-confirmed'}">${b.status}</span></td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="deleteBooking(${b.id})">🗑️ Delete</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" class="loading-td" style="color:var(--danger)">${err.message}</td></tr>`;
+    }
+}
+
+async function deleteBooking(id) {
+    if (!confirm(`Delete booking record #${id}?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/bookings/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete booking');
+        showToast(`Booking #${id} deleted.`, 'info');
+        loadBookings();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ======================================================================
+// 7. MODULE 5: REFUNDS & CANCELLATIONS (IT25102432)
+// ======================================================================
+async function loadRefunds() {
+    const tbody = document.getElementById('refundsTableBody');
+    try {
+        const res = await fetch(`${API_BASE}/api/refunds`);
+        if (!res.ok) throw new Error('Could not fetch refunds');
+        const refunds = await res.json();
+
+        document.getElementById('refundsBadge').textContent = `${refunds.length} requests`;
+
+        if (refunds.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="loading-td">No refund cancellation requests found.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = refunds.map(r => {
+            const statusClass = `status-${r.status.toLowerCase()}`;
+            const isPending = r.status === 'PENDING';
+
+            return `
+                <tr>
+                    <td><b>#${r.id}</b></td>
+                    <td>Booking #${r.bookingId}</td>
+                    <td>${escapeHtml(r.customerName || 'Customer')}</td>
+                    <td><b>Rs. ${formatCurrency(r.refundAmountLkr)}</b></td>
+                    <td>${escapeHtml(r.reason || 'Requested by customer')}</td>
+                    <td><span class="status-badge-table ${statusClass}">${r.status}</span></td>
+                    <td>
+                        ${isPending ? `
+                            <div class="action-btns">
+                                <button class="btn btn-success btn-sm" onclick="handleRefundStatus(${r.id}, 'APPROVED')">✓ Approve (Release Seats)</button>
+                                <button class="btn btn-danger btn-sm" onclick="handleRefundStatus(${r.id}, 'REJECTED')">✗ Reject</button>
+                            </div>
+                        ` : `<span class="text-muted">Settled</span>`}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading-td" style="color:var(--danger)">${err.message}</td></tr>`;
+    }
+}
+
+async function handleCreateRefund(e) {
+    e.preventDefault();
+    const bookingId = parseInt(document.getElementById('refundBookingId').value);
+    const reason = document.getElementById('refundReason').value.trim();
+    const amountVal = document.getElementById('refundAmount').value;
+    const refundAmountLkr = amountVal ? parseFloat(amountVal) : null;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/refunds`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, reason, refundAmountLkr })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to submit refund request');
+
+        showToast(`Refund request #${data.id} submitted with status PENDING.`, 'success');
+        document.getElementById('createRefundForm').reset();
+        loadRefunds();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+/**
+ * Approving refund executes SEAT RELEASE LOGIC:
+ * marks booking as CANCELLED and unlocks seats!
+ */
+async function handleRefundStatus(refundId, newStatus) {
+    if (!confirm(`Are you sure you want to set Refund #${refundId} to ${newStatus}?`)) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/refunds/${refundId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update refund status');
+
+        if (newStatus === 'APPROVED') {
+            showToast(`🎉 Refund #${refundId} APPROVED! SEAT RELEASE LOGIC EXECUTED: Booking #${data.bookingId} cancelled and seats freed!`, 'success');
+        } else {
+            showToast(`Refund #${refundId} was marked as REJECTED.`, 'info');
+        }
+
+        loadRefunds();
+        loadBookings();
+        loadDashboardStats();
+        // Refresh booking seat matrix if active
+        const curShowtime = document.getElementById('bookingShowtimeSelect').value;
+        if (curShowtime) loadBookingLayout(curShowtime);
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// ======================================================================
+// 8. MODULE 6: LOYALTY PROGRAM & DISCOUNT VOUCHERS (IT24100907)
+// ======================================================================
+async function loadVouchers() {
+    const tbody = document.getElementById('vouchersTableBody');
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers`);
+        if (!res.ok) throw new Error('Could not fetch vouchers');
+        const vouchers = await res.json();
+
+        document.getElementById('vouchersBadge').textContent = `${vouchers.length} vouchers`;
+
+        if (vouchers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="loading-td">No promotional vouchers created yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = vouchers.map(v => `
+            <tr>
+                <td><b>#${v.id}</b></td>
+                <td><b style="color:var(--primary); font-family:monospace; font-size:1rem;">${escapeHtml(v.code)}</b></td>
+                <td><b>Rs. ${formatCurrency(v.discountAmountLkr)}</b></td>
+                <td><span class="status-badge-table ${v.active ? 'status-confirmed' : 'status-cancelled'}">${v.active ? 'ACTIVE' : 'INACTIVE'}</span></td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleVoucher(${v.id})">${v.active ? 'Disable' : 'Activate'}</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteVoucher(${v.id})">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="loading-td" style="color:var(--danger)">${err.message}</td></tr>`;
+    }
+}
+
+async function handleCreateVoucher(e) {
+    e.preventDefault();
+    const code = document.getElementById('voucherCodeInput').value.trim();
+    const discountAmountLkr = parseFloat(document.getElementById('voucherDiscountInput').value);
+    const isActive = document.getElementById('voucherActiveCheckbox').checked;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code || null, discountAmountLkr, isActive })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create voucher');
+
+        showToast(`🎉 Voucher "${data.code}" with Rs. ${formatCurrency(data.discountAmountLkr)} discount created!`, 'success');
+        document.getElementById('createVoucherForm').reset();
+        document.getElementById('voucherDiscountInput').value = 200;
+        document.getElementById('voucherActiveCheckbox').checked = true;
+        loadVouchers();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function toggleVoucher(id) {
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers/${id}/toggle`, { method: 'PATCH' });
+        if (!res.ok) throw new Error('Failed to toggle voucher');
+        const updated = await res.json();
+        showToast(`Voucher ${updated.code} is now ${updated.active ? 'ACTIVE' : 'INACTIVE'}`, 'info');
+        loadVouchers();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function deleteVoucher(id) {
+    if (!confirm(`Delete voucher #${id}?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete voucher');
+        showToast(`Voucher #${id} deleted.`, 'info');
+        loadVouchers();
+        loadDashboardStats();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function testCheckCode() {
+    const code = document.getElementById('checkCodeInput').value.trim();
+    const resultDiv = document.getElementById('checkCodeResult');
+
+    if (!code) {
+        resultDiv.className = 'check-result text-muted';
+        resultDiv.textContent = 'Please enter a code.';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/vouchers/validate/${encodeURIComponent(code)}`);
+        const data = await res.json();
+        if (res.ok && data.valid) {
+            resultDiv.className = 'check-result' style = "color:var(--success); font-weight:700;";
+            resultDiv.textContent = `✓ Valid Voucher! Discount: Rs. ${formatCurrency(data.discountAmountLkr)}`;
+        } else {
+            resultDiv.className = 'check-result';
+            resultDiv.style = "color:var(--danger); font-weight:600;";
+            resultDiv.textContent = `✗ ${data.error || 'Invalid or inactive voucher'}`;
+        }
+    } catch (err) {
+        resultDiv.style = "color:var(--danger); font-weight:600;";
+        resultDiv.textContent = `✗ ${err.message}`;
+    }
+}
+
+// ======================================================================
+// 9. UTILITIES: TOASTS, TOOLTIPS, FORMATTERS
+// ======================================================================
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    let icon = 'ℹ️';
+    if (type === 'success') icon = '✅';
+    if (type === 'error') icon = '❌';
+    if (type === 'warning') icon = '⚠️';
+
+    toast.innerHTML = `<span>${icon}</span><span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(12px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4500);
+}
+
+function initSeatTooltip() {
+    const tooltip = document.getElementById('seatTooltip');
+    window.showTooltip = (e, text) => {
+        tooltip.textContent = text;
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${e.clientX}px`;
+        tooltip.style.top = `${e.clientY}px`;
+    };
+    window.moveTooltip = (e) => {
+        tooltip.style.left = `${e.clientX}px`;
+        tooltip.style.top = `${e.clientY}px`;
+    };
+    window.hideTooltip = () => {
+        tooltip.style.display = 'none';
+    };
+}
+
+function formatCurrency(amount) {
+    if (amount === undefined || amount === null || isNaN(amount)) return '0.00';
+    return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}

@@ -16,7 +16,6 @@ import java.util.Map;
  * Part of Seating Layout and Hall Allocation (IT25102154).
  */
 @RestController
-@RequestMapping("/api/halls")
 @CrossOrigin(origins = "*")
 public class HallController {
 
@@ -28,11 +27,8 @@ public class HallController {
 
     /**
      * [READ] GET /api/halls
-     * Retrieve a list of all cinema halls.
-     *
-     * @return 200 OK with list of halls.
      */
-    @GetMapping
+    @GetMapping("/api/halls")
     public ResponseEntity<List<Hall>> getAllHalls() {
         List<Hall> halls = hallService.getAllHalls();
         return ResponseEntity.ok(halls);
@@ -40,12 +36,8 @@ public class HallController {
 
     /**
      * [READ] GET /api/halls/{id}
-     * Retrieve details of a specific cinema hall by ID.
-     *
-     * @param id The hall ID.
-     * @return 200 OK with Hall details, or 404 NOT FOUND if nonexistent.
      */
-    @GetMapping("/{id}")
+    @GetMapping("/api/halls/{id}")
     public ResponseEntity<?> getHallById(@PathVariable Long id) {
         try {
             Hall hall = hallService.getHallById(id);
@@ -58,12 +50,8 @@ public class HallController {
 
     /**
      * [READ] GET /api/halls/{id}/seats
-     * Retrieve all seats / seating layout for a specific hall.
-     *
-     * @param id The hall ID.
-     * @return 200 OK with list of Seat objects, or 404 NOT FOUND if hall nonexistent.
      */
-    @GetMapping("/{id}/seats")
+    @GetMapping("/api/halls/{id}/seats")
     public ResponseEntity<?> getSeatsByHallId(@PathVariable Long id) {
         try {
             List<Seat> seats = hallService.getSeatsByHallId(id);
@@ -76,12 +64,8 @@ public class HallController {
 
     /**
      * [CREATE] POST /api/halls
-     * Create a new cinema hall and auto-generate its seating layout matrix.
-     *
-     * @param hall The hall details JSON payload (name, totalRows, seatsPerRow, hallType).
-     * @return 201 CREATED with the newly created Hall.
      */
-    @PostMapping
+    @PostMapping("/api/halls")
     public ResponseEntity<?> createHall(@RequestBody Hall hall) {
         try {
             Hall createdHall = hallService.allocateHall(hall);
@@ -97,19 +81,14 @@ public class HallController {
 
     /**
      * [UPDATE] PUT /api/halls/{id}
-     * Update an existing cinema hall's name or hall type.
-     *
-     * @param id          The ID of the hall to update.
-     * @param updatedHall The updated hall data.
-     * @return 200 OK with updated Hall, or 404 NOT FOUND.
      */
-    @PutMapping("/{id}")
+    @PutMapping("/api/halls/{id}")
     public ResponseEntity<?> updateHall(@PathVariable Long id, @RequestBody Hall updatedHall) {
         try {
             Hall result = hallService.updateHall(id, updatedHall);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -119,12 +98,8 @@ public class HallController {
 
     /**
      * [DELETE] DELETE /api/halls/{id}
-     * Delete a cinema hall and cascade delete all its associated seats.
-     *
-     * @param id The ID of the hall to delete.
-     * @return 200 OK with confirmation message, or 404 NOT FOUND.
      */
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/api/halls/{id}")
     public ResponseEntity<?> deleteHall(@PathVariable Long id) {
         try {
             hallService.deleteHall(id);
@@ -143,18 +118,15 @@ public class HallController {
 
     /**
      * [UPDATE] PUT /api/halls/seats/{seatId}/status
-     * Toggle or update the active status of a specific seat (maintenance vs available).
-     * If request body contains {"isActive": true/false}, it sets the status explicitly.
-     * If no body is provided, it toggles the existing active status.
-     *
-     * @param seatId  The seat ID.
-     * @param payload Optional JSON map containing {"isActive": boolean}.
-     * @return 200 OK with the updated Seat object, or 404 NOT FOUND if seat doesn't exist.
      */
-    @PutMapping("/seats/{seatId}/status")
+    @PutMapping("/api/halls/seats/{seatId}/status")
     public ResponseEntity<?> updateSeatStatus(
             @PathVariable Long seatId,
             @RequestBody(required = false) Map<String, Object> payload) {
+        if (seatId == null || seatId <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid seat ID: " + seatId));
+        }
         try {
             Seat updatedSeat;
             if (payload != null && payload.containsKey("isActive")) {
@@ -167,9 +139,24 @@ public class HallController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to update seat status", "details", e.getMessage()));
+        }
+    }
+
+    /**
+     * [TOGGLE] PATCH /api/seats/{id}/toggle
+     */
+    @PatchMapping("/api/seats/{id}/toggle")
+    public ResponseEntity<?> toggleSeatMaintenance(@PathVariable Long id) {
+        if (id == null || id <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid seat ID: " + id));
+        }
+        try {
+            Seat updatedSeat = hallService.toggleSeatStatus(id);
+            return ResponseEntity.ok(updatedSeat);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }

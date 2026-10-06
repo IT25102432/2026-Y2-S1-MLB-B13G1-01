@@ -42,6 +42,9 @@ public class HallService {
      * @throws IllegalArgumentException if the hall is not found.
      */
     public Hall getHallById(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Invalid cinema hall ID: " + id);
+        }
         return hallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Cinema hall not found with ID: " + id));
     }
@@ -54,35 +57,20 @@ public class HallService {
      * @throws IllegalArgumentException if the hall does not exist.
      */
     public List<Seat> getSeatsByHallId(Long hallId) {
-        // Validate that the hall exists first
         getHallById(hallId);
         return seatRepository.findByHallId(hallId);
     }
 
     /**
      * Allocate and create a new cinema hall and automatically generate its seat matrix layout.
+     * Server-side Constraints: Name non-blank, total_rows (1–26), seats_per_row (1–30), base_price > 0 LKR.
      *
-     * @param hall The hall details (name, totalRows, seatsPerRow, hallType).
-     * @return The created Hall object with its generated ID.
-     * @throws IllegalArgumentException if input parameters are invalid.
+     * @param hall The hall details.
+     * @return The created Hall object.
      */
     @Transactional
     public Hall allocateHall(Hall hall) {
-        if (hall.getName() == null || hall.getName().trim().isEmpty()) {
-            throw new IllegalArgumentException("Hall name cannot be empty.");
-        }
-        if (hall.getTotalRows() <= 0) {
-            throw new IllegalArgumentException("Total rows must be greater than zero.");
-        }
-        if (hall.getSeatsPerRow() <= 0) {
-            throw new IllegalArgumentException("Seats per row must be greater than zero.");
-        }
-        if (hall.getHallType() == null || hall.getHallType().trim().isEmpty()) {
-            hall.setHallType("STANDARD");
-        }
-        if (hall.getBasePrice() == null || hall.getBasePrice() <= 0) {
-            hall.setBasePrice(1200.0);
-        }
+        validateHallConstraints(hall);
 
         // 1. Save the hall entity to get generated primary key ID
         Hall savedHall = hallRepository.save(hall);
@@ -94,30 +82,41 @@ public class HallService {
     }
 
     /**
-     * Update an existing cinema hall's details (e.g. name, type, price).
+     * Update an existing cinema hall's details.
      *
      * @param id          The ID of the hall to update.
      * @param updatedHall The updated hall data.
      * @return The updated Hall object.
-     * @throws IllegalArgumentException if hall not found or input invalid.
      */
     @Transactional
     public Hall updateHall(Long id, Hall updatedHall) {
         Hall existing = getHallById(id);
 
-        if (updatedHall.getName() != null && !updatedHall.getName().trim().isEmpty()) {
+        if (updatedHall.getName() != null) {
+            if (updatedHall.getName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Hall name cannot be empty.");
+            }
             existing.setName(updatedHall.getName().trim());
         }
         if (updatedHall.getHallType() != null && !updatedHall.getHallType().trim().isEmpty()) {
             existing.setHallType(updatedHall.getHallType().trim());
         }
         if (updatedHall.getTotalRows() > 0) {
+            if (updatedHall.getTotalRows() > 26) {
+                throw new IllegalArgumentException("Total rows must be between 1 and 26.");
+            }
             existing.setTotalRows(updatedHall.getTotalRows());
         }
         if (updatedHall.getSeatsPerRow() > 0) {
+            if (updatedHall.getSeatsPerRow() > 30) {
+                throw new IllegalArgumentException("Seats per row must be between 1 and 30.");
+            }
             existing.setSeatsPerRow(updatedHall.getSeatsPerRow());
         }
-        if (updatedHall.getBasePrice() != null && updatedHall.getBasePrice() > 0) {
+        if (updatedHall.getBasePrice() != null) {
+            if (updatedHall.getBasePrice() <= 0) {
+                throw new IllegalArgumentException("Base price must be greater than 0 LKR.");
+            }
             existing.setBasePrice(updatedHall.getBasePrice());
         }
 
@@ -128,23 +127,17 @@ public class HallService {
      * Delete a cinema hall and cascade delete all its associated seats.
      *
      * @param id The hall ID to delete.
-     * @throws IllegalArgumentException if hall does not exist.
      */
     @Transactional
     public void deleteHall(Long id) {
-        // Ensure hall exists first
         getHallById(id);
-
-        // Cascade delete seats belonging to this hall
         seatRepository.deleteByHallId(id);
-
-        // Delete the hall record
         hallRepository.deleteById(id);
     }
 
     /**
-     * Helper method to auto-generate seat matrices (Rows A-Z, Seat numbers 1..N)
-     * and persist them in the database for the given hall.
+     * Auto-generate seat matrices (Rows A-Z, Seat numbers 1..N)
+     * VIP rows priced at Rs. 2,000, Standard at Rs. 1,200.
      *
      * @param hall The hall for which seats should be generated.
      * @return The list of generated Seat objects.
@@ -157,11 +150,9 @@ public class HallService {
         for (int r = 0; r < rows; r++) {
             String rowLabel = getRowLabel(r);
 
-            // Determine seat type: front 2 rows are VIP by default, or all VIP if hallType is VIP
+            // Determine seat type: front 2 rows are VIP (Rs. 2,000) or all VIP if hall is VIP
             String seatType = "STANDARD";
-            if ("VIP".equalsIgnoreCase(hall.getHallType()) || "IMAX".equalsIgnoreCase(hall.getHallType()) && r < 2) {
-                seatType = "VIP";
-            } else if (r < 2) {
+            if ("VIP".equalsIgnoreCase(hall.getHallType()) || r < 2) {
                 seatType = "VIP";
             }
 
@@ -171,26 +162,27 @@ public class HallService {
                         rowLabel,
                         s,
                         seatType,
-                        true // newly generated seats are active by default
+                        true // active by default
                 );
                 generatedSeats.add(seat);
             }
         }
 
-        // Batch persist all generated seats
         seatRepository.saveAll(generatedSeats);
         return generatedSeats;
     }
 
     /**
-     * Toggle the active status of a seat (e.g. enable/disable for maintenance or booking).
+     * Toggle the active status of a seat (Admin maintenance toggle).
      *
-     * @param seatId The ID of the seat.
+     * @param seatId The seat ID.
      * @return The updated Seat object.
-     * @throws IllegalArgumentException if seat is not found.
      */
     @Transactional
     public Seat toggleSeatStatus(Long seatId) {
+        if (seatId == null || seatId <= 0) {
+            throw new IllegalArgumentException("Invalid seat ID: " + seatId);
+        }
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found with ID: " + seatId));
 
@@ -203,13 +195,15 @@ public class HallService {
     /**
      * Explicitly set the active status of a seat.
      *
-     * @param seatId   The ID of the seat.
+     * @param seatId   The seat ID.
      * @param isActive Desired active state.
      * @return The updated Seat object.
-     * @throws IllegalArgumentException if seat is not found.
      */
     @Transactional
     public Seat updateSeatStatus(Long seatId, boolean isActive) {
+        if (seatId == null || seatId <= 0) {
+            throw new IllegalArgumentException("Invalid seat ID: " + seatId);
+        }
         Seat seat = seatRepository.findById(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found with ID: " + seatId));
 
@@ -219,16 +213,33 @@ public class HallService {
     }
 
     /**
-     * Helper to convert row index (0-indexed) to letter label (A, B, C... Z, AA, AB...).
-     *
-     * @param rowIndex 0-based row index.
-     * @return Alphabetic row string.
+     * Server-side constraint validator for Hall.
      */
+    private void validateHallConstraints(Hall hall) {
+        if (hall == null) {
+            throw new IllegalArgumentException("Hall data cannot be null.");
+        }
+        if (hall.getName() == null || hall.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Hall name cannot be empty.");
+        }
+        if (hall.getTotalRows() < 1 || hall.getTotalRows() > 26) {
+            throw new IllegalArgumentException("Total rows must be between 1 and 26.");
+        }
+        if (hall.getSeatsPerRow() < 1 || hall.getSeatsPerRow() > 30) {
+            throw new IllegalArgumentException("Seats per row must be between 1 and 30.");
+        }
+        if (hall.getHallType() == null || hall.getHallType().trim().isEmpty()) {
+            hall.setHallType("STANDARD");
+        }
+        if (hall.getBasePrice() == null || hall.getBasePrice() <= 0) {
+            throw new IllegalArgumentException("Base price must be greater than 0 LKR.");
+        }
+    }
+
     private String getRowLabel(int rowIndex) {
         if (rowIndex < 26) {
             return String.valueOf((char) ('A' + rowIndex));
         }
-        // For larger halls beyond 26 rows (e.g. AA, AB)
         int firstChar = (rowIndex / 26) - 1;
         int secondChar = rowIndex % 26;
         return String.valueOf((char) ('A' + firstChar)) + (char) ('A' + secondChar);
