@@ -87,44 +87,55 @@ async function loadDashboardStats() {
 // 3. MODULE 1: SEATING LAYOUT & HALL ALLOCATION (IT25102154)
 // ======================================================================
 function renderHallsTable(halls) {
-    const tbody = document.getElementById('hallsTableBody');
-    if (!tbody) return;
+    try {
+        const hallsTableBody = document.getElementById('hallsTableBody');
+        if (!hallsTableBody) {
+            console.warn('renderHallsTable: hallsTableBody element not found in DOM.');
+            return;
+        }
 
-    if (!Array.isArray(halls) || halls.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="loading-td">No cinema halls found. Create one to begin.</td></tr>`;
-        return;
+        if (!Array.isArray(halls) || halls.length === 0) {
+            hallsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No registered halls found. Create one using the form on the right.</td></tr>`;
+            return;
+        }
+
+        hallsTableBody.innerHTML = halls.map(h => {
+            const id = h.id ?? '';
+            const name = h.name ?? 'Unnamed Hall';
+            const totalRows = h.totalRows ?? h.total_rows ?? 0;
+            const seatsPerRow = h.seatsPerRow ?? h.seats_per_row ?? 0;
+            const totalCapacity = h.totalCapacity ?? h.total_capacity ?? (totalRows * seatsPerRow);
+            const hallType = h.hallType ?? h.hall_type ?? 'STANDARD';
+            const basePrice = h.basePrice ?? h.base_price ?? 1200;
+
+            return `
+                <tr>
+                    <td><b>#${id}</b></td>
+                    <td><b>${escapeHtml(name)}</b></td>
+                    <td>${totalRows} × ${seatsPerRow} (${totalCapacity} seats)</td>
+                    <td><span class="badge">${escapeHtml(hallType)}</span></td>
+                    <td>Rs. ${formatCurrency(basePrice)}</td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="btn btn-secondary btn-sm" onclick="openEditHallModal(${id}, '${escapeHtml(name)}', '${hallType}', ${basePrice})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteHall(${id})">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error rendering halls table:', err);
+        const hallsTableBody = document.getElementById('hallsTableBody');
+        if (hallsTableBody) {
+            hallsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No registered halls found. Create one using the form on the right.</td></tr>`;
+        }
     }
-
-    tbody.innerHTML = halls.map(h => {
-        const id = h.id ?? '';
-        const name = h.name ?? 'Unnamed Hall';
-        const totalRows = h.totalRows ?? h.total_rows ?? 0;
-        const seatsPerRow = h.seatsPerRow ?? h.seats_per_row ?? 0;
-        const totalCapacity = h.totalCapacity ?? h.total_capacity ?? (totalRows * seatsPerRow);
-        const hallType = h.hallType ?? h.hall_type ?? 'STANDARD';
-        const basePrice = h.basePrice ?? h.base_price ?? 1200;
-
-        return `
-            <tr>
-                <td><b>#${id}</b></td>
-                <td><b>${escapeHtml(name)}</b></td>
-                <td>${totalRows} × ${seatsPerRow} (${totalCapacity} seats)</td>
-                <td><span class="badge">${escapeHtml(hallType)}</span></td>
-                <td>Rs. ${formatCurrency(basePrice)}</td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn btn-secondary btn-sm" onclick="openEditHallModal(${id}, '${escapeHtml(name)}', '${hallType}', ${basePrice})">✏️ Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteHall(${id})">🗑️</button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
 }
 
 async function loadHalls() {
-    const tbody = document.getElementById('hallsTableBody');
-    const layoutSelect = document.getElementById('layoutHallSelect');
+    const hallsTableBody = document.getElementById('hallsTableBody');
+    const hallSelect = document.getElementById('hallSelect') || document.getElementById('layoutHallSelect');
     const showtimeHallSelect = document.getElementById('showtimeHallSelect');
     const badge = document.getElementById('hallsBadge');
 
@@ -132,47 +143,91 @@ async function loadHalls() {
         const res = await fetch(`${API_BASE}/api/halls`);
         if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
-            throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText || 'Could not fetch halls'}`);
+            const errMsg = errData.error || `HTTP ${res.status}: ${res.statusText || 'Could not fetch halls'}`;
+            console.error('Error loading halls:', errMsg);
+
+            if (hallsTableBody) {
+                hallsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No registered halls found. Create one using the form on the right.</td></tr>`;
+            }
+            if (hallSelect) {
+                hallSelect.innerHTML = `<option value="">-- Select a Hall --</option>`;
+            }
+            if (showtimeHallSelect) {
+                showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>`;
+            }
+            if (badge) {
+                badge.textContent = '0 halls';
+            }
+            return;
         }
+
         const halls = await res.json();
+
+        if (!Array.isArray(halls) || halls.length === 0) {
+            if (hallsTableBody) {
+                hallsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No registered halls found. Create one using the form on the right.</td></tr>`;
+            }
+            if (hallSelect) {
+                hallSelect.innerHTML = `<option value="">-- Select a Hall --</option>`;
+            }
+            if (showtimeHallSelect) {
+                showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>`;
+            }
+            if (badge) {
+                badge.textContent = '0 halls';
+            }
+            return;
+        }
 
         if (badge) {
             badge.textContent = `${halls.length} halls`;
         }
 
+        // Safely render table
         renderHallsTable(halls);
 
-        // Populate Layout Hall Select and Showtime Hall Select
-        if (layoutSelect) {
-            const currentSelected = layoutSelect.value;
-            layoutSelect.innerHTML = halls.map(h => {
+        // Safely populate hallSelect dropdown
+        if (hallSelect) {
+            const currentSelected = hallSelect.value;
+            let optionsHtml = `<option value="">-- Select a Hall --</option>`;
+            optionsHtml += halls.map(h => {
                 const totalRows = h.totalRows ?? h.total_rows ?? 0;
                 const seatsPerRow = h.seatsPerRow ?? h.seats_per_row ?? 0;
                 const totalCap = h.totalCapacity ?? h.total_capacity ?? (totalRows * seatsPerRow);
                 const hType = h.hallType ?? h.hall_type ?? 'STANDARD';
-                return `<option value="${h.id}">${escapeHtml(h.name)} (${hType} - ${totalCap} seats)</option>`;
+                const name = h.name ?? 'Unnamed Hall';
+                return `<option value="${h.id}">${escapeHtml(name)} (${escapeHtml(hType)} - ${totalCap} seats)</option>`;
             }).join('');
+            hallSelect.innerHTML = optionsHtml;
 
-            if (halls.length > 0) {
-                const hallToLoad = currentSelected && halls.some(h => h.id == currentSelected) ? currentSelected : halls[0].id;
-                layoutSelect.value = hallToLoad;
+            const hallToLoad = currentSelected && halls.some(h => String(h.id) === String(currentSelected))
+                ? currentSelected
+                : halls[0].id;
+            hallSelect.value = hallToLoad;
+
+            if (typeof loadHallSeatingLayout === 'function') {
                 loadHallSeatingLayout(hallToLoad);
             }
         }
 
+        // Safely populate showtimeHallSelect
         if (showtimeHallSelect) {
             const hType = (h) => h.hallType ?? h.hall_type ?? 'STANDARD';
             showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>` + halls.map(h => `
-                <option value="${h.id}">${escapeHtml(h.name)} (${hType(h)})</option>
+                <option value="${h.id}">${escapeHtml(h.name ?? 'Hall')} (${escapeHtml(hType(h))})</option>
             `).join('');
         }
+
     } catch (err) {
-        console.error('Error loading halls:', err);
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading-td" style="color:var(--danger)">⚠️ Error loading halls: ${escapeHtml(err.message)}</td></tr>`;
+        console.error('Error in loadHalls():', err);
+        if (hallsTableBody) {
+            hallsTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">No registered halls found. Create one using the form on the right.</td></tr>`;
+        }
+        if (hallSelect) {
+            hallSelect.innerHTML = `<option value="">-- Select a Hall --</option>`;
         }
         if (badge) {
-            badge.textContent = 'Error';
+            badge.textContent = '0 halls';
         }
     }
 }
@@ -223,6 +278,7 @@ async function handleCreateHall(e) {
 async function loadHallSeatingLayout(hallId) {
     if (!hallId) return;
     const container = document.getElementById('seatMatrixContainer');
+    if (!container) return;
     container.innerHTML = `<div class="empty-matrix-msg">Generating seating matrix...</div>`;
 
     try {
@@ -241,11 +297,15 @@ async function loadHallSeatingLayout(hallId) {
                 loadHallSeatingLayout(hallId);
                 loadDashboardStats();
             } catch (err) {
+                console.error('Error toggling seat maintenance:', err);
                 showToast(err.message, 'error');
             }
         });
     } catch (err) {
-        container.innerHTML = `<div class="empty-matrix-msg" style="color:var(--danger)">${err.message}</div>`;
+        console.error('Error loading hall seating layout:', err);
+        if (container) {
+            container.innerHTML = `<div class="empty-matrix-msg" style="color:var(--danger)">${escapeHtml(err.message)}</div>`;
+        }
     }
 }
 

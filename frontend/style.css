@@ -430,6 +430,14 @@ body {
     font-style: italic;
 }
 
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: var(--text-muted);
+}
+
 .action-btns {
     display: flex;
     gap: 8px;

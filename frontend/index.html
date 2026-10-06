@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 CineBook - Web-Based Cinema Ticket Reservation System</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -180,9 +180,9 @@
                     <p class="card-desc">Rows A &amp; B default to VIP (Rs. 2,000), subsequent rows Standard (Rs. 1,200). Click seats to toggle Admin Maintenance status.</p>
                 </div>
                 <div class="hall-picker-controls">
-                    <label for="layoutHallSelect">Select Hall:</label>
-                    <select id="layoutHallSelect" onchange="loadHallSeatingLayout(this.value)">
-                        <option value="">Loading halls...</option>
+                    <label for="hallSelect">Select Hall:</label>
+                    <select id="hallSelect" name="hallSelect" onchange="loadHallSeatingLayout(this.value)">
+                        <option value="">-- Select a Hall --</option>
                     </select>
                 </div>
             </div>
@@ -704,6 +704,6 @@
 <!-- Custom Tooltip for Seats -->
 <div class="seat-tooltip" id="seatTooltip"></div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
