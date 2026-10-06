@@ -89,87 +89,90 @@ async function initApp() {
     }, 20000);
 }
 
+// Global Event Delegation for Navigation Tabs
+document.addEventListener('click', function(e) {
+    const tabBtn = e.target.closest('[data-tab]');
+    if (tabBtn && !tabBtn.matches('main, section')) {
+        e.preventDefault();
+        const targetTab = tabBtn.getAttribute('data-tab');
+        switchTab(targetTab);
+    }
+});
+
+// Global Event Delegation for Form Submissions
+document.addEventListener('submit', function(e) {
+    if (e.target && (e.target.id === 'allocateHallForm' || e.target.id === 'createHallForm')) {
+        e.preventDefault();
+        handleAllocateHall(e);
+    }
+});
+
 function initNavigationTabs() {
-    const tabs = document.querySelectorAll('[data-tab], .nav-tab, .nav-tabs button, .nav-tabs a');
+    const tabs = document.querySelectorAll('.nav-tab, [data-tab]');
     tabs.forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            e.preventDefault();
-            const targetId = tab.getAttribute('data-tab') || tab.getAttribute('href');
-            switchTab(targetId);
-        });
+        if (!tab.matches('main, section')) {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = tab.getAttribute('data-tab') || tab.getAttribute('href');
+                switchTab(targetId);
+            });
+        }
     });
 }
 
-function switchTab(tabId) {
-    if (!tabId) return;
-    const cleanId = String(tabId).replace(/^#/, '');
+function switchTab(tabKey) {
+    if (!tabKey) return;
+    const cleanKey = String(tabKey).replace(/^(#|tab-)/, '').replace(/-section$/, '');
 
-    const aliasMap = {
-        'tab-halls': 'halls-section',
-        'halls': 'halls-section',
-        'halls-section': 'halls-section',
-        'tab-movies': 'movies-section',
-        'movies': 'movies-section',
-        'movies-section': 'movies-section',
-        'tab-showtimes': 'showtimes-section',
-        'showtimes': 'showtimes-section',
-        'showtimes-section': 'showtimes-section',
-        'tab-reservations': 'reservations-section',
-        'reservations': 'reservations-section',
-        'reservations-section': 'reservations-section',
-        'tab-refunds': 'refunds-section',
-        'refunds': 'refunds-section',
-        'refunds-section': 'refunds-section',
-        'tab-vouchers': 'vouchers-section',
-        'vouchers': 'vouchers-section',
-        'vouchers-section': 'vouchers-section'
-    };
-
-    const sectionId = aliasMap[cleanId] || (cleanId.endsWith('-section') ? cleanId : cleanId + '-section');
-    const targetPane = document.getElementById(sectionId) ||
-                       document.getElementById('tab-' + cleanId.replace('-section', '')) ||
-                       document.getElementById(cleanId);
-
-    // 1. Hide inactive sections (remove active class from all section panels)
-    document.querySelectorAll('.tab-pane, main[id$="-section"], main[id^="tab-"], section[id$="-section"]').forEach(pane => {
-        pane.classList.remove('active');
+    // 1. Remove active class from all .nav-tab buttons and all section panels
+    const sectionIds = [
+        '#halls-section',
+        '#movies-section',
+        '#showtimes-section',
+        '#reservations-section',
+        '#refunds-section',
+        '#vouchers-section'
+    ];
+    document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+    sectionIds.forEach(id => {
+        const sec = document.querySelector(id);
+        if (sec) sec.classList.remove('active');
     });
 
-    // 2. Remove active class from all navigation tab buttons
-    document.querySelectorAll('.nav-tab, [data-tab], .nav-tabs button, .nav-tabs a').forEach(btn => {
-        btn.classList.remove('active');
-        const btnTab = btn.getAttribute('data-tab') || (btn.getAttribute('href') ? btn.getAttribute('href').replace(/^#/, '') : '');
-        if (btnTab && (btnTab === cleanId || btnTab === sectionId || aliasMap[btnTab] === sectionId)) {
-            btn.classList.add('active');
-        }
+    // 2. Add active class to the clicked tab button and the target section panel (#${tabKey}-section)
+    document.querySelectorAll(`[data-tab="${cleanKey}"], .nav-tab[data-tab="${cleanKey}"]`).forEach(btn => {
+        btn.classList.add('active');
     });
-
-    // 3. Display the target section (add active class)
-    if (targetPane) {
-        targetPane.classList.add('active');
+    const targetSection = document.getElementById(`${cleanKey}-section`) || document.querySelector(`#${cleanKey}-section`);
+    if (targetSection) {
+        targetSection.classList.add('active');
     }
 
-    // 4. Trigger corresponding module loader
+    // 3. Call the target section's loader function
     try {
-        if (sectionId === 'halls-section' || cleanId.includes('hall')) {
-            if (typeof loadHalls === 'function') loadHalls();
-        } else if (sectionId === 'movies-section' || cleanId.includes('movie')) {
-            if (typeof loadMovies === 'function') loadMovies();
-        } else if (sectionId === 'showtimes-section' || cleanId.includes('showtime')) {
-            if (typeof loadShowtimes === 'function') loadShowtimes();
-        } else if (sectionId === 'reservations-section' || cleanId.includes('reservation')) {
-            if (typeof loadBookings === 'function') loadBookings();
-            if (typeof loadShowtimeDropdownForBooking === 'function') loadShowtimeDropdownForBooking();
-            if (typeof loadReservations === 'function' && typeof loadBookings !== 'function') {
-                loadReservations();
-            }
-        } else if (sectionId === 'refunds-section' || cleanId.includes('refund')) {
-            if (typeof loadRefunds === 'function') loadRefunds();
-        } else if (sectionId === 'vouchers-section' || cleanId.includes('voucher')) {
-            if (typeof loadVouchers === 'function') loadVouchers();
+        switch (cleanKey) {
+            case 'halls':
+                if (typeof loadHalls === 'function') loadHalls();
+                break;
+            case 'movies':
+                if (typeof loadMovies === 'function') loadMovies();
+                break;
+            case 'showtimes':
+                if (typeof loadShowtimes === 'function') loadShowtimes();
+                break;
+            case 'reservations':
+                if (typeof loadBookings === 'function') loadBookings();
+                if (typeof loadShowtimeDropdownForBooking === 'function') loadShowtimeDropdownForBooking();
+                break;
+            case 'refunds':
+                if (typeof loadRefunds === 'function') loadRefunds();
+                break;
+            case 'vouchers':
+                if (typeof loadVouchers === 'function') loadVouchers();
+                break;
         }
     } catch (err) {
-        console.error('Error during tab switch module loading:', err);
+        console.error(`Error loading module for tab ${cleanKey}:`, err);
     }
 }
 window.switchTab = switchTab;
@@ -410,14 +413,14 @@ async function handleAllocateHall(e) {
     const hallTypeInput = document.getElementById('hallType');
     const basePriceInput = document.getElementById('basePrice');
 
-    const name = nameInput ? nameInput.value.trim() : '';
+    const hallName = nameInput ? nameInput.value.trim() : '';
     const totalRows = totalRowsInput ? parseInt(totalRowsInput.value, 10) : 0;
     const seatsPerRow = seatsPerRowInput ? parseInt(seatsPerRowInput.value, 10) : 0;
     const hallType = hallTypeInput ? hallTypeInput.value : 'STANDARD';
     const basePrice = basePriceInput ? parseFloat(basePriceInput.value) : 1200;
 
     // Validation
-    if (!name) {
+    if (!hallName) {
         showToast('Hall name cannot be empty.', 'warning');
         return;
     }
@@ -438,7 +441,7 @@ async function handleAllocateHall(e) {
         const res = await fetch(`${API_BASE}/api/halls`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, totalRows, seatsPerRow, hallType, basePrice })
+            body: JSON.stringify({ name: hallName, totalRows, seatsPerRow, hallType, basePrice })
         });
         const data = await res.json().catch(() => ({}));
 
@@ -453,7 +456,7 @@ async function handleAllocateHall(e) {
         }
 
         const capacity = data.totalCapacity || data.total_capacity || (totalRows * seatsPerRow);
-        showToast(`🎉 Hall "${data.name || name}" allocated successfully with ${capacity} seats!`, 'success');
+        showToast(`🎉 Hall "${data.name || hallName}" allocated successfully with ${capacity} seats!`, 'success');
 
         if (form) form.reset();
         if (totalRowsInput) totalRowsInput.value = 5;
