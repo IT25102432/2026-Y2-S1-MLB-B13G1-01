@@ -56,6 +56,28 @@
     box-sizing: border-box;
 }
 
+/* Custom Glassmorphic Scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #0B0F17;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #06B6D4;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) #0B0F17;
+}
+
+
 body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-main);

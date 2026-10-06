@@ -90,7 +90,7 @@ async function initApp() {
 }
 
 function initNavigationTabs() {
-    const tabs = document.querySelectorAll('.nav-tab, .nav-tabs button, .nav-tabs a');
+    const tabs = document.querySelectorAll('[data-tab], .nav-tab, .nav-tabs button, .nav-tabs a');
     tabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
             e.preventDefault();
@@ -125,18 +125,18 @@ function switchTab(tabId) {
         'vouchers-section': 'vouchers-section'
     };
 
-    const sectionId = aliasMap[cleanId] || cleanId;
+    const sectionId = aliasMap[cleanId] || (cleanId.endsWith('-section') ? cleanId : cleanId + '-section');
     const targetPane = document.getElementById(sectionId) ||
                        document.getElementById('tab-' + cleanId.replace('-section', '')) ||
                        document.getElementById(cleanId);
 
-    // Remove active class from all section panels
+    // 1. Hide inactive sections (remove active class from all section panels)
     document.querySelectorAll('.tab-pane, main[id$="-section"], main[id^="tab-"], section[id$="-section"]').forEach(pane => {
         pane.classList.remove('active');
     });
 
-    // Remove active class from all navigation tab buttons
-    document.querySelectorAll('.nav-tab, .nav-tabs button, .nav-tabs a').forEach(btn => {
+    // 2. Remove active class from all navigation tab buttons
+    document.querySelectorAll('.nav-tab, [data-tab], .nav-tabs button, .nav-tabs a').forEach(btn => {
         btn.classList.remove('active');
         const btnTab = btn.getAttribute('data-tab') || (btn.getAttribute('href') ? btn.getAttribute('href').replace(/^#/, '') : '');
         if (btnTab && (btnTab === cleanId || btnTab === sectionId || aliasMap[btnTab] === sectionId)) {
@@ -144,12 +144,12 @@ function switchTab(tabId) {
         }
     });
 
-    // Add active class to corresponding container section
+    // 3. Display the target section (add active class)
     if (targetPane) {
         targetPane.classList.add('active');
     }
 
-    // Trigger corresponding module load function when a tab is selected
+    // 4. Trigger corresponding module loader
     try {
         if (sectionId === 'halls-section' || cleanId.includes('hall')) {
             if (typeof loadHalls === 'function') loadHalls();
@@ -158,7 +158,9 @@ function switchTab(tabId) {
         } else if (sectionId === 'showtimes-section' || cleanId.includes('showtime')) {
             if (typeof loadShowtimes === 'function') loadShowtimes();
         } else if (sectionId === 'reservations-section' || cleanId.includes('reservation')) {
-            if (typeof loadReservations === 'function') {
+            if (typeof loadBookings === 'function') loadBookings();
+            if (typeof loadShowtimeDropdownForBooking === 'function') loadShowtimeDropdownForBooking();
+            if (typeof loadReservations === 'function' && typeof loadBookings !== 'function') {
                 loadReservations();
             }
         } else if (sectionId === 'refunds-section' || cleanId.includes('refund')) {
@@ -1475,3 +1477,16 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+// Global exports for testability and browser navigation
+window.initApp = initApp;
+window.switchTab = switchTab;
+window.loadHalls = loadHalls;
+window.loadMovies = loadMovies;
+window.loadShowtimes = loadShowtimes;
+window.loadBookings = loadBookings;
+window.loadReservations = loadReservations;
+window.loadRefunds = loadRefunds;
+window.loadVouchers = loadVouchers;
+window.handleAllocateHall = handleAllocateHall;
+
