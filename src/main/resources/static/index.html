@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Showtime Desk — Ceylon Star Cinemas</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=2">
+</head>
+<body>
+
+<div class="filmstrip" aria-hidden="true"></div>
+
+<header class="marquee">
+  <div class="marquee__inner">
+    <div class="marquee__brand">
+      <span class="marquee__mark">CEYLON STAR CINEMAS</span>
+      <h1 class="marquee__title">Showtime Desk</h1>
+      <p class="marquee__tagline">Schedule every screening. Never double-book a hall.</p>
+    </div>
+    <button id="openCreateBtn" class="btn btn--gold" type="button">
+      Schedule a showtime
+    </button>
+  </div>
+</header>
+
+<main class="page">
+
+  <section class="toolbar" aria-label="Filter showtimes">
+    <div class="field field--search">
+      <label for="searchInput">Search</label>
+      <input id="searchInput" type="text" placeholder="Movie or hall name…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="hallFilter">Hall</label>
+      <select id="hallFilter">
+        <option value="">All halls</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="statusFilter">Status</label>
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="SCHEDULED">Scheduled</option>
+        <option value="CANCELLED">Cancelled</option>
+        <option value="COMPLETED">Completed</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dateFilter">Date</label>
+      <input id="dateFilter" type="date">
+    </div>
+    <button id="clearFiltersBtn" class="btn btn--ghost" type="button">Clear</button>
+  </section>
+
+  <section class="summary" id="summaryBar" aria-live="polite"></section>
+
+  <section id="showtimeGrid" class="grid" aria-live="polite"></section>
+
+  <div id="emptyState" class="empty-state" hidden>
+    <p class="empty-state__title">The screen is dark.</p>
+    <p class="empty-state__body">No showtimes match right now. Schedule one, or clear your filters.</p>
+  </div>
+
+</main>
+
+<!-- Create / Edit modal -->
+<div id="formOverlay" class="overlay" hidden>
+  <div class="ticket-window" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <div class="ticket-window__header">
+      <h2 id="formTitle">Schedule a showtime</h2>
+      <button id="closeFormBtn" class="icon-btn" type="button" aria-label="Close">&times;</button>
+    </div>
+
+    <form id="showtimeForm" class="ticket-form" novalidate>
+      <input type="hidden" id="showtimeId">
+
+      <div class="ticket-form__row">
+        <div class="form-group">
+          <label for="movieTitle">Movie title</label>
+          <input id="movieTitle" name="movieTitle" type="text" maxlength="120" required>
+          <span class="error-text" data-error-for="movieTitle"></span>
+        </div>
+        <div class="form-group">
+          <label for="genre">Genre</label>
+          <input id="genre" name="genre" type="text" maxlength="60" required placeholder="e.g. Thriller">
+          <span class="error-text" data-error-for="genre"></span>
+        </div>
+      </div>
+
+      <div class="ticket-form__row">
+        <div class="form-group">
+          <label for="language">Language</label>
+          <input id="language" name="language" type="text" maxlength="40" required placeholder="e.g. English">
+          <span class="error-text" data-error-for="language"></span>
+        </div>
+        <div class="form-group">
+          <label for="hallName">Hall</label>
+          <select id="hallName" name="hallName" required></select>
+          <span class="error-text" data-error-for="hallName"></span>
+        </div>
+      </div>
+
+      <div class="ticket-form__row">
+        <div class="form-group">
+          <label for="showDate">Date</label>
+          <input id="showDate" name="showDate" type="date" required>
+          <span class="error-text" data-error-for="showDate"></span>
+        </div>
+        <div class="form-group">
+          <label for="showTime">Start time</label>
+          <input id="showTime" name="showTime" type="time" required>
+          <span class="error-text" data-error-for="showTime"></span>
+        </div>
+      </div>
+
+      <div class="ticket-form__row">
+        <div class="form-group">
+          <label for="durationMinutes">Duration (minutes)</label>
+          <input id="durationMinutes" name="durationMinutes" type="number" min="30" max="400" required>
+          <span class="error-text" data-error-for="durationMinutes"></span>
+        </div>
+        <div class="form-group">
+          <label for="ticketPrice">Ticket price (LKR)</label>
+          <input id="ticketPrice" name="ticketPrice" type="number" min="0" step="0.01" required>
+          <span class="error-text" data-error-for="ticketPrice"></span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+      </div>
+
+      <p id="formEndPreview" class="form-hint"></p>
+      <p id="formTopError" class="form-error" role="alert" hidden></p>
+
+      <div class="ticket-form__actions">
+        <button type="button" id="cancelFormBtn" class="btn btn--ghost">Cancel</button>
+        <button type="submit" id="submitFormBtn" class="btn btn--gold">Save showtime</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Delete confirmation -->
+<div id="deleteOverlay" class="overlay" hidden>
+  <div class="ticket-window ticket-window--small" role="alertdialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="ticket-window__header">
+      <h2 id="deleteTitle">Cancel this listing?</h2>
+      <button id="closeDeleteBtn" class="icon-btn" type="button" aria-label="Close">&times;</button>
+    </div>
+    <p id="deleteMessage" class="delete-message"></p>
+    <div class="ticket-form__actions">
+      <button type="button" id="cancelDeleteBtn" class="btn btn--ghost">Keep it</button>
+      <button type="button" id="confirmDeleteBtn" class="btn btn--crimson">Delete permanently</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastHost" class="toast-host" aria-live="assertive"></div>
+
+<script src="js/app.js?v=2"></script>
+</body>
+</html>
