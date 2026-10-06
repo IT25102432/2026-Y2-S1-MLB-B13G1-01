@@ -31,7 +31,7 @@ public class Hall {
         this.totalRows = totalRows;
         this.seatsPerRow = seatsPerRow;
         this.hallType = hallType;
-        this.basePrice = (basePrice != null && basePrice > 0) ? basePrice : 1200.0;
+        this.basePrice = basePrice;
     }
 
     // Full parameterized constructor
@@ -50,7 +50,7 @@ public class Hall {
         this.totalRows = totalRows;
         this.seatsPerRow = seatsPerRow;
         this.hallType = hallType;
-        this.basePrice = (basePrice != null && basePrice > 0) ? basePrice : 1200.0;
+        this.basePrice = basePrice;
     }
 
     // Getters and Setters

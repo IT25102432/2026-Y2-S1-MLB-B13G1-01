@@ -45,4 +45,13 @@ public class ShowtimeServiceTest {
                 () -> showtimeService.createShowtime(overlapping));
         assertTrue(ex.getMessage().contains("conflict") || ex.getMessage().contains("overlaps"));
     }
+
+    @Test
+    void testPastDateShowtimeThrows() {
+        LocalDate pastDate = LocalDate.now().minusDays(2);
+        Showtime pastShowtime = new Showtime(1L, 1L, pastDate, LocalTime.of(10, 0));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> showtimeService.createShowtime(pastShowtime));
+        assertTrue(ex.getMessage().contains("past"));
+    }
 }

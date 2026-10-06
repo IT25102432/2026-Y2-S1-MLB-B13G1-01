@@ -137,4 +137,31 @@ public class HallServiceTest {
         // Verify seats cascade deleted
         assertThrows(IllegalArgumentException.class, () -> hallService.getSeatsByHallId(hallId));
     }
+
+    @Test
+    void testDuplicateHallNameThrows() {
+        Hall h1 = new Hall("Duplicate Name Hall", 3, 4, "STANDARD", 1000.0);
+        hallService.allocateHall(h1);
+
+        // Case-insensitive duplicate check
+        Hall h2 = new Hall("duplicate name hall", 2, 2, "VIP", 1500.0);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> hallService.allocateHall(h2));
+        assertTrue(ex.getMessage().contains("Hall name already exists"));
+    }
+
+    @Test
+    void testDimensionRestrictions() {
+        // Rows < 1
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H1", 0, 5, "STANDARD")));
+        // Rows > 26
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H2", 27, 5, "STANDARD")));
+        // Seats per row < 1
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H3", 5, 0, "STANDARD")));
+        // Seats per row > 30
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H4", 5, 31, "STANDARD")));
+        // Base price <= 0
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H5", 5, 5, "STANDARD", 0.0)));
+        assertThrows(IllegalArgumentException.class, () -> hallService.allocateHall(new Hall("H6", 5, 5, "STANDARD", -10.0)));
+    }
 }

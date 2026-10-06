@@ -86,56 +86,94 @@ async function loadDashboardStats() {
 // ======================================================================
 // 3. MODULE 1: SEATING LAYOUT & HALL ALLOCATION (IT25102154)
 // ======================================================================
+function renderHallsTable(halls) {
+    const tbody = document.getElementById('hallsTableBody');
+    if (!tbody) return;
+
+    if (!Array.isArray(halls) || halls.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="loading-td">No cinema halls found. Create one to begin.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = halls.map(h => {
+        const id = h.id ?? '';
+        const name = h.name ?? 'Unnamed Hall';
+        const totalRows = h.totalRows ?? h.total_rows ?? 0;
+        const seatsPerRow = h.seatsPerRow ?? h.seats_per_row ?? 0;
+        const totalCapacity = h.totalCapacity ?? h.total_capacity ?? (totalRows * seatsPerRow);
+        const hallType = h.hallType ?? h.hall_type ?? 'STANDARD';
+        const basePrice = h.basePrice ?? h.base_price ?? 1200;
+
+        return `
+            <tr>
+                <td><b>#${id}</b></td>
+                <td><b>${escapeHtml(name)}</b></td>
+                <td>${totalRows} × ${seatsPerRow} (${totalCapacity} seats)</td>
+                <td><span class="badge">${escapeHtml(hallType)}</span></td>
+                <td>Rs. ${formatCurrency(basePrice)}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditHallModal(${id}, '${escapeHtml(name)}', '${hallType}', ${basePrice})">✏️ Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteHall(${id})">🗑️</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
 async function loadHalls() {
     const tbody = document.getElementById('hallsTableBody');
     const layoutSelect = document.getElementById('layoutHallSelect');
     const showtimeHallSelect = document.getElementById('showtimeHallSelect');
+    const badge = document.getElementById('hallsBadge');
 
     try {
         const res = await fetch(`${API_BASE}/api/halls`);
-        if (!res.ok) throw new Error('Could not fetch halls');
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText || 'Could not fetch halls'}`);
+        }
         const halls = await res.json();
 
-        document.getElementById('hallsBadge').textContent = `${halls.length} halls`;
-
-        if (halls.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading-td">No cinema halls found. Create one to begin.</td></tr>`;
-            return;
+        if (badge) {
+            badge.textContent = `${halls.length} halls`;
         }
 
-        tbody.innerHTML = halls.map(h => `
-            <tr>
-                <td><b>#${h.id}</b></td>
-                <td><b>${escapeHtml(h.name)}</b></td>
-                <td>${h.totalRows} × ${h.seatsPerRow} (${h.totalCapacity} seats)</td>
-                <td><span class="badge">${escapeHtml(h.hallType)}</span></td>
-                <td>Rs. ${formatCurrency(h.basePrice)}</td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn btn-secondary btn-sm" onclick="openEditHallModal(${h.id}, '${escapeHtml(h.name)}', '${h.hallType}', ${h.basePrice})">✏️ Edit</button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteHall(${h.id})">🗑️</button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+        renderHallsTable(halls);
 
         // Populate Layout Hall Select and Showtime Hall Select
-        const currentSelected = layoutSelect.value;
-        layoutSelect.innerHTML = halls.map(h => `
-            <option value="${h.id}">${escapeHtml(h.name)} (${h.hallType} - ${h.totalCapacity} seats)</option>
-        `).join('');
+        if (layoutSelect) {
+            const currentSelected = layoutSelect.value;
+            layoutSelect.innerHTML = halls.map(h => {
+                const totalRows = h.totalRows ?? h.total_rows ?? 0;
+                const seatsPerRow = h.seatsPerRow ?? h.seats_per_row ?? 0;
+                const totalCap = h.totalCapacity ?? h.total_capacity ?? (totalRows * seatsPerRow);
+                const hType = h.hallType ?? h.hall_type ?? 'STANDARD';
+                return `<option value="${h.id}">${escapeHtml(h.name)} (${hType} - ${totalCap} seats)</option>`;
+            }).join('');
 
-        showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>` + halls.map(h => `
-            <option value="${h.id}">${escapeHtml(h.name)} (${h.hallType})</option>
-        `).join('');
+            if (halls.length > 0) {
+                const hallToLoad = currentSelected && halls.some(h => h.id == currentSelected) ? currentSelected : halls[0].id;
+                layoutSelect.value = hallToLoad;
+                loadHallSeatingLayout(hallToLoad);
+            }
+        }
 
-        if (halls.length > 0) {
-            const hallToLoad = currentSelected && halls.some(h => h.id == currentSelected) ? currentSelected : halls[0].id;
-            layoutSelect.value = hallToLoad;
-            loadHallSeatingLayout(hallToLoad);
+        if (showtimeHallSelect) {
+            const hType = (h) => h.hallType ?? h.hall_type ?? 'STANDARD';
+            showtimeHallSelect.innerHTML = `<option value="">-- Choose Hall --</option>` + halls.map(h => `
+                <option value="${h.id}">${escapeHtml(h.name)} (${hType(h)})</option>
+            `).join('');
         }
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="loading-td" style="color:var(--danger)">Error loading halls: ${err.message}</td></tr>`;
+        console.error('Error loading halls:', err);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading-td" style="color:var(--danger)">⚠️ Error loading halls: ${escapeHtml(err.message)}</td></tr>`;
+        }
+        if (badge) {
+            badge.textContent = 'Error';
+        }
     }
 }
 
@@ -430,6 +468,15 @@ async function handleSaveMovie(e) {
     const posterUrl = document.getElementById('modalMoviePoster').value.trim();
     const description = document.getElementById('modalMovieDesc').value.trim();
 
+    if (!title) {
+        showToast('Movie title cannot be empty.', 'warning');
+        return;
+    }
+    if (isNaN(durationMins) || durationMins <= 0) {
+        showToast('Movie duration must be greater than zero minutes.', 'warning');
+        return;
+    }
+
     const payload = { title, genre, durationMins, rating, status, posterUrl, description };
 
     try {
@@ -511,7 +558,20 @@ async function handleCreateShowtime(e) {
     const movieId = parseInt(document.getElementById('showtimeMovieSelect').value);
     const hallId = parseInt(document.getElementById('showtimeHallSelect').value);
     const showDate = document.getElementById('showDate').value;
-    const startTime = document.getElementById('startTime').value + ":00";
+    const timeVal = document.getElementById('startTime').value;
+
+    if (!movieId || !hallId || !showDate || !timeVal) {
+        showToast('Please fill out all showtime scheduling fields.', 'warning');
+        return;
+    }
+
+    const showDateTime = new Date(`${showDate}T${timeVal}`);
+    if (showDateTime < new Date()) {
+        showToast('⚠️ Cannot schedule showtimes for dates or times in the past.', 'warning');
+        return;
+    }
+
+    const startTime = timeVal.length === 5 ? timeVal + ":00" : timeVal;
 
     try {
         const res = await fetch(`${API_BASE}/api/showtimes`, {
@@ -531,7 +591,7 @@ async function handleCreateShowtime(e) {
         loadShowtimes();
         loadDashboardStats();
     } catch (err) {
-        showToast(`⚠️ Conflict: ${err.message}`, 'error');
+        showToast(`⚠️ ${err.message}`, 'error');
     }
 }
 
@@ -1027,6 +1087,11 @@ async function handleCreateVoucher(e) {
     const code = document.getElementById('voucherCodeInput').value.trim();
     const discountAmountLkr = parseFloat(document.getElementById('voucherDiscountInput').value);
     const isActive = document.getElementById('voucherActiveCheckbox').checked;
+
+    if (isNaN(discountAmountLkr) || discountAmountLkr <= 0) {
+        showToast('Discount amount must be greater than 0 LKR.', 'warning');
+        return;
+    }
 
     try {
         const res = await fetch(`${API_BASE}/api/vouchers`, {

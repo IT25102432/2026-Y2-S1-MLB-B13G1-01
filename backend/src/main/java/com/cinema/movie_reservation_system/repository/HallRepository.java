@@ -108,6 +108,37 @@ public class HallRepository {
     }
 
     /**
+     * Check if a cinema hall exists with the given name (case-insensitive).
+     *
+     * @param name The hall name to check.
+     * @return true if a hall exists with this name, false otherwise.
+     */
+    public boolean existsByNameIgnoreCase(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM halls WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, name.trim());
+        return count != null && count > 0;
+    }
+
+    /**
+     * Check if another cinema hall exists with the given name excluding a specific ID.
+     *
+     * @param name The hall name.
+     * @param id   The hall ID to exclude.
+     * @return true if another hall exists with this name, false otherwise.
+     */
+    public boolean existsByNameIgnoreCaseAndIdNot(String name, Long id) {
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM halls WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND id <> ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, name.trim(), id);
+        return count != null && count > 0;
+    }
+
+    /**
      * Delete a cinema hall by its unique ID.
      *
      * @param id The hall ID to delete.

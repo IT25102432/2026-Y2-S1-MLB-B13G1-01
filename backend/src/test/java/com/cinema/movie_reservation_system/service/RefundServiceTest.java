@@ -56,4 +56,26 @@ public class RefundServiceTest {
         assertNotNull(newBooking.getId());
         assertEquals("CONFIRMED", newBooking.getStatus());
     }
+
+    @Test
+    void testRefundOnNonConfirmedBookingThrows() {
+        // Create booking and cancel it
+        BookingRequest bReq = new BookingRequest(1L, "Cancel User", "cancel@user.com", List.of(7L), null);
+        Booking booking = bookingService.createBooking(bReq);
+        bookingService.cancelBooking(booking.getId());
+
+        // Attempt refund on CANCELLED booking
+        RefundRequestDTO rReq = new RefundRequestDTO(booking.getId(), "Try refund", 2000.0);
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> refundService.requestRefund(rReq));
+        assertTrue(ex.getMessage().contains("confirmed"));
+    }
+
+    @Test
+    void testRefundOnInvalidBookingIdThrows() {
+        RefundRequestDTO rReq = new RefundRequestDTO(99999L, "Try refund", 1000.0);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> refundService.requestRefund(rReq));
+        assertTrue(ex.getMessage().contains("not found"));
+    }
 }

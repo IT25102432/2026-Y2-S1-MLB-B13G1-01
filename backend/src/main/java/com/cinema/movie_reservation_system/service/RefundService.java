@@ -48,8 +48,8 @@ public class RefundService {
         Booking booking = bookingRepository.findById(dto.getBookingId())
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found with ID: " + dto.getBookingId()));
 
-        if ("CANCELLED".equalsIgnoreCase(booking.getStatus())) {
-            throw new IllegalStateException("Booking #" + booking.getId() + " is already cancelled.");
+        if (!"CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
+            throw new IllegalStateException("Only confirmed bookings are eligible for refund requests. Current status: " + booking.getStatus());
         }
 
         // Check for existing pending refund

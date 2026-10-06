@@ -55,4 +55,15 @@ public class VoucherServiceTest {
         Voucher toggled = voucherService.toggleVoucherStatus(created.getId());
         assertFalse(toggled.isActive());
     }
+
+    @Test
+    void testDuplicateVoucherCodeThrows() {
+        Voucher v1 = new Voucher("DUPCODE", 100.0, true);
+        voucherService.createVoucher(v1);
+
+        Voucher v2 = new Voucher("DUPCODE", 200.0, true);
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> voucherService.createVoucher(v2));
+        assertTrue(ex.getMessage().contains("already exists"));
+    }
 }

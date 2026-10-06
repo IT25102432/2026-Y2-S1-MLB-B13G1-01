@@ -90,6 +90,24 @@ public class MovieRepository {
         }
     }
 
+    public boolean existsByTitleIgnoreCase(String title) {
+        if (title == null || title.trim().isEmpty()) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM movies WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, title.trim());
+        return count != null && count > 0;
+    }
+
+    public boolean existsByTitleIgnoreCaseAndIdNot(String title, Long id) {
+        if (title == null || title.trim().isEmpty()) {
+            return false;
+        }
+        String sql = "SELECT COUNT(*) FROM movies WHERE LOWER(TRIM(title)) = LOWER(TRIM(?)) AND id <> ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, title.trim(), id);
+        return count != null && count > 0;
+    }
+
     public int deleteById(Long id) {
         String sql = "DELETE FROM movies WHERE id = ?";
         return jdbcTemplate.update(sql, id);

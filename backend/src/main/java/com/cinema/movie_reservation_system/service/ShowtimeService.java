@@ -132,5 +132,9 @@ public class ShowtimeService {
         if (s.getStartTime() == null) {
             throw new IllegalArgumentException("Show start time is required.");
         }
+        LocalDateTime showDateTime = LocalDateTime.of(s.getShowDate(), s.getStartTime());
+        if (showDateTime.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Cannot schedule showtimes for dates or times in the past.");
+        }
     }
 }

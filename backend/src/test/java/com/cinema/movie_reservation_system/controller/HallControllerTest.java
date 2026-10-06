@@ -128,4 +128,19 @@ public class HallControllerTest {
         assertNotNull(explicitSeat);
         assertTrue(explicitSeat.isActive());
     }
+
+    @Test
+    void testCreateHall_DuplicateNameReturns400() {
+        Hall h1 = new Hall("Controller Dup Hall", 2, 4, "STANDARD", 1200.0);
+        ResponseEntity<?> resp1 = hallController.createHall(h1);
+        assertEquals(HttpStatus.CREATED, resp1.getStatusCode());
+
+        Hall h2 = new Hall("controller dup hall", 2, 4, "VIP", 1500.0);
+        ResponseEntity<?> resp2 = hallController.createHall(h2);
+        assertEquals(HttpStatus.BAD_REQUEST, resp2.getStatusCode());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> errorMap = (Map<String, Object>) resp2.getBody();
+        assertNotNull(errorMap);
+        assertEquals("Hall name already exists", errorMap.get("error"));
+    }
 }

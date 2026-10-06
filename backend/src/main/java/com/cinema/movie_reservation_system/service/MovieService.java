@@ -38,6 +38,9 @@ public class MovieService {
     @Transactional
     public Movie createMovie(Movie movie) {
         validateMovie(movie);
+        if (movieRepository.existsByTitleIgnoreCase(movie.getTitle())) {
+            throw new IllegalArgumentException("Movie title already exists.");
+        }
         return movieRepository.save(movie);
     }
 
@@ -46,10 +49,14 @@ public class MovieService {
         Movie existing = getMovieById(id);
 
         if (incoming.getTitle() != null) {
-            if (incoming.getTitle().trim().isEmpty()) {
+            String trimmedTitle = incoming.getTitle().trim();
+            if (trimmedTitle.isEmpty()) {
                 throw new IllegalArgumentException("Movie title cannot be empty.");
             }
-            existing.setTitle(incoming.getTitle().trim());
+            if (movieRepository.existsByTitleIgnoreCaseAndIdNot(trimmedTitle, id)) {
+                throw new IllegalArgumentException("Movie title already exists.");
+            }
+            existing.setTitle(trimmedTitle);
         }
         if (incoming.getGenre() != null && !incoming.getGenre().trim().isEmpty()) {
             existing.setGenre(incoming.getGenre().trim());

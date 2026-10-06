@@ -17,7 +17,7 @@ DROP TABLE IF EXISTS halls;
 -- ----------------------------------------------------------------------
 CREATE TABLE halls (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     total_rows INT NOT NULL,
     seats_per_row INT NOT NULL,
     hall_type VARCHAR(50) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE seats (
 -- ----------------------------------------------------------------------
 CREATE TABLE movies (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL UNIQUE,
     genre VARCHAR(100) NOT NULL,
     duration_mins INT NOT NULL,
     rating VARCHAR(20) NOT NULL,

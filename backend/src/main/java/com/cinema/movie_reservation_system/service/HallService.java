@@ -72,6 +72,10 @@ public class HallService {
     public Hall allocateHall(Hall hall) {
         validateHallConstraints(hall);
 
+        if (hallRepository.existsByNameIgnoreCase(hall.getName())) {
+            throw new IllegalArgumentException("Hall name already exists");
+        }
+
         // 1. Save the hall entity to get generated primary key ID
         Hall savedHall = hallRepository.save(hall);
 
@@ -93,10 +97,14 @@ public class HallService {
         Hall existing = getHallById(id);
 
         if (updatedHall.getName() != null) {
-            if (updatedHall.getName().trim().isEmpty()) {
+            String trimmedName = updatedHall.getName().trim();
+            if (trimmedName.isEmpty()) {
                 throw new IllegalArgumentException("Hall name cannot be empty.");
             }
-            existing.setName(updatedHall.getName().trim());
+            if (hallRepository.existsByNameIgnoreCaseAndIdNot(trimmedName, id)) {
+                throw new IllegalArgumentException("Hall name already exists");
+            }
+            existing.setName(trimmedName);
         }
         if (updatedHall.getHallType() != null && !updatedHall.getHallType().trim().isEmpty()) {
             existing.setHallType(updatedHall.getHallType().trim());

@@ -60,4 +60,23 @@ public class MovieServiceTest {
         assertEquals("Updated Title", updated.getTitle());
         assertEquals("ARCHIVED", updated.getStatus());
     }
+
+    @Test
+    void testDuplicateMovieTitleThrows() {
+        Movie m1 = new Movie("Inception 2", "Sci-Fi", 150, "PG-13", null, "Desc", "ACTIVE");
+        movieService.createMovie(m1);
+
+        Movie m2 = new Movie("inception 2", "Sci-Fi", 140, "PG-13", null, "Desc", "ACTIVE");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> movieService.createMovie(m2));
+        assertTrue(ex.getMessage().contains("Movie title already exists"));
+    }
+
+    @Test
+    void testInvalidDurationThrows() {
+        Movie m = new Movie("Zero Duration Movie", "Action", 0, "PG-13", null, "Desc", "ACTIVE");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> movieService.createMovie(m));
+        assertTrue(ex.getMessage().contains("duration must be greater than zero"));
+    }
 }
