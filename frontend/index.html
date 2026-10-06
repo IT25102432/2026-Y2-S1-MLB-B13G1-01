@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 CineBook - Web-Based Cinema Ticket Reservation System</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -31,22 +31,22 @@
 
         <!-- Module Navigation Tabs -->
         <nav class="nav-tabs" id="mainNavTabs">
-            <button class="nav-tab active" data-tab="tab-halls">
+            <button class="nav-tab active" data-tab="halls-section" onclick="switchTab('halls-section')">
                 <span class="tab-num">1</span> Halls &amp; Seating <span class="student-id">IT25102154</span>
             </button>
-            <button class="nav-tab" data-tab="tab-movies">
+            <button class="nav-tab" data-tab="movies-section" onclick="switchTab('movies-section')">
                 <span class="tab-num">2</span> Movie Catalog <span class="student-id">IT25101311</span>
             </button>
-            <button class="nav-tab" data-tab="tab-showtimes">
+            <button class="nav-tab" data-tab="showtimes-section" onclick="switchTab('showtimes-section')">
                 <span class="tab-num">3</span> Showtimes <span class="student-id">IT25103071</span>
             </button>
-            <button class="nav-tab" data-tab="tab-reservations">
+            <button class="nav-tab" data-tab="reservations-section" onclick="switchTab('reservations-section')">
                 <span class="tab-num">4</span> Reservations <span class="student-id">IT25100266</span>
             </button>
-            <button class="nav-tab" data-tab="tab-refunds">
+            <button class="nav-tab" data-tab="refunds-section" onclick="switchTab('refunds-section')">
                 <span class="tab-num">5</span> Refunds &amp; Cancels <span class="student-id">IT25102432</span>
             </button>
-            <button class="nav-tab" data-tab="tab-vouchers">
+            <button class="nav-tab" data-tab="vouchers-section" onclick="switchTab('vouchers-section')">
                 <span class="tab-num">6</span> Vouchers &amp; Loyalty <span class="student-id">IT24100907</span>
             </button>
         </nav>
@@ -94,7 +94,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 1: SEATING LAYOUT & HALL ALLOCATION (IT25102154)         -->
     <!-- ============================================================== -->
-    <main id="tab-halls" class="tab-pane active">
+    <main id="halls-section" class="tab-pane active" data-tab="tab-halls">
         <!-- CRUD & Hall Matrix Panel -->
         <div class="content-card">
             <div class="card-header">
@@ -136,7 +136,7 @@
                     <div class="col-header">
                         <h3>➕ Allocate New Hall</h3>
                     </div>
-                    <form id="createHallForm" onsubmit="handleCreateHall(event)">
+                    <form id="allocateHallForm" onsubmit="handleAllocateHall(event)">
                         <div class="form-group">
                             <label for="hallName">Hall Name *</label>
                             <input type="text" id="hallName" placeholder="e.g. Hall 4 - Luxe Premiere" required>
@@ -221,7 +221,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 2: MOVIE CATALOG & DETAILS MANAGEMENT (IT25101311)       -->
     <!-- ============================================================== -->
-    <main id="tab-movies" class="tab-pane">
+    <main id="movies-section" class="tab-pane" data-tab="tab-movies">
         <div class="content-card">
             <div class="card-header">
                 <div>
@@ -246,7 +246,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 3: SHOWTIME SCHEDULING & THEATER ASSIGNMENT (IT25103071) -->
     <!-- ============================================================== -->
-    <main id="tab-showtimes" class="tab-pane">
+    <main id="showtimes-section" class="tab-pane" data-tab="tab-showtimes">
         <div class="content-card">
             <div class="card-header">
                 <div>
@@ -324,7 +324,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 4: SEAT RESERVATIONS & TICKET BOOKING (IT25100266)       -->
     <!-- ============================================================== -->
-    <main id="tab-reservations" class="tab-pane">
+    <main id="reservations-section" class="tab-pane" data-tab="tab-reservations">
         <div class="content-card">
             <div class="card-header">
                 <div>
@@ -451,7 +451,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 5: REFUNDS & CANCELLATIONS MANAGEMENT (IT25102432)       -->
     <!-- ============================================================== -->
-    <main id="tab-refunds" class="tab-pane">
+    <main id="refunds-section" class="tab-pane" data-tab="tab-refunds">
         <div class="content-card">
             <div class="card-header">
                 <div>
@@ -516,7 +516,7 @@
     <!-- ============================================================== -->
     <!-- MODULE 6: LOYALTY PROGRAM & DISCOUNT VOUCHERS (IT24100907)       -->
     <!-- ============================================================== -->
-    <main id="tab-vouchers" class="tab-pane">
+    <main id="vouchers-section" class="tab-pane" data-tab="tab-vouchers">
         <div class="content-card">
             <div class="card-header">
                 <div>
@@ -704,6 +704,6 @@
 <!-- Custom Tooltip for Seats -->
 <div class="seat-tooltip" id="seatTooltip"></div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

@@ -12,47 +12,211 @@ let appliedVoucher = null;
 let currentHallSeats = [];
 
 // ======================================================================
-// 1. INITIALIZATION & NAVIGATION
 // ======================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    initNavigationTabs();
-    initSeatTooltip();
-    loadDashboardStats();
-    loadHalls();
-    loadMovies();
-    loadShowtimes();
-    loadBookings();
-    loadRefunds();
-    loadVouchers();
-
-    // Auto-refresh dashboard stats every 20 seconds
-    setInterval(loadDashboardStats, 20000);
+// 1. HARDENED APPLICATION INITIALIZATION & NAVIGATION
+// ======================================================================
+window.addEventListener('DOMContentLoaded', () => {
+    initApp().catch(err => console.error('Critical failure in initApp():', err));
 });
 
+async function initApp() {
+    // 1. Initialize UI event bindings first so navigation and forms work regardless of API status
+    try {
+        initNavigationTabs();
+    } catch (err) {
+        console.error('Error initializing navigation tabs:', err);
+    }
+
+    try {
+        initFormListeners();
+    } catch (err) {
+        console.error('Error initializing form listeners:', err);
+    }
+
+    try {
+        initSeatTooltip();
+    } catch (err) {
+        console.error('Error initializing seat tooltip:', err);
+    }
+
+    // 2. Load dashboard statistics
+    try {
+        await loadDashboardStats();
+    } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+    }
+
+    // 3. Load all modules with defensive try/catch blocks
+    try {
+        await loadHalls();
+    } catch (err) {
+        console.error('Error loading halls module:', err);
+    }
+
+    try {
+        await loadMovies();
+    } catch (err) {
+        console.error('Error loading movies module:', err);
+    }
+
+    try {
+        await loadShowtimes();
+    } catch (err) {
+        console.error('Error loading showtimes module:', err);
+    }
+
+    try {
+        await loadReservations();
+    } catch (err) {
+        console.error('Error loading reservations module:', err);
+    }
+
+    try {
+        await loadRefunds();
+    } catch (err) {
+        console.error('Error loading refunds module:', err);
+    }
+
+    try {
+        await loadVouchers();
+    } catch (err) {
+        console.error('Error loading vouchers module:', err);
+    }
+
+    // Auto-refresh dashboard stats every 20 seconds
+    setInterval(() => {
+        loadDashboardStats().catch(err => console.error('Auto-refresh dashboard stats failed:', err));
+    }, 20000);
+}
+
 function initNavigationTabs() {
-    const tabs = document.querySelectorAll('.nav-tab');
+    const tabs = document.querySelectorAll('.nav-tab, .nav-tabs button, .nav-tabs a');
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-
-            tab.classList.add('active');
-            const targetPaneId = tab.getAttribute('data-tab');
-            const targetPane = document.getElementById(targetPaneId);
-            if (targetPane) {
-                targetPane.classList.add('active');
-            }
-
-            // Lazy refresh when tab opens
-            if (targetPaneId === 'tab-halls') { loadHalls(); }
-            else if (targetPaneId === 'tab-movies') { loadMovies(); }
-            else if (targetPaneId === 'tab-showtimes') { loadShowtimes(); }
-            else if (targetPaneId === 'tab-reservations') { loadShowtimeDropdownForBooking(); loadBookings(); }
-            else if (targetPaneId === 'tab-refunds') { loadRefunds(); }
-            else if (targetPaneId === 'tab-vouchers') { loadVouchers(); }
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = tab.getAttribute('data-tab') || tab.getAttribute('href');
+            switchTab(targetId);
         });
     });
 }
+
+function switchTab(tabId) {
+    if (!tabId) return;
+    const cleanId = String(tabId).replace(/^#/, '');
+
+    const aliasMap = {
+        'tab-halls': 'halls-section',
+        'halls': 'halls-section',
+        'halls-section': 'halls-section',
+        'tab-movies': 'movies-section',
+        'movies': 'movies-section',
+        'movies-section': 'movies-section',
+        'tab-showtimes': 'showtimes-section',
+        'showtimes': 'showtimes-section',
+        'showtimes-section': 'showtimes-section',
+        'tab-reservations': 'reservations-section',
+        'reservations': 'reservations-section',
+        'reservations-section': 'reservations-section',
+        'tab-refunds': 'refunds-section',
+        'refunds': 'refunds-section',
+        'refunds-section': 'refunds-section',
+        'tab-vouchers': 'vouchers-section',
+        'vouchers': 'vouchers-section',
+        'vouchers-section': 'vouchers-section'
+    };
+
+    const sectionId = aliasMap[cleanId] || cleanId;
+    const targetPane = document.getElementById(sectionId) ||
+                       document.getElementById('tab-' + cleanId.replace('-section', '')) ||
+                       document.getElementById(cleanId);
+
+    // Remove active class from all section panels
+    document.querySelectorAll('.tab-pane, main[id$="-section"], main[id^="tab-"], section[id$="-section"]').forEach(pane => {
+        pane.classList.remove('active');
+    });
+
+    // Remove active class from all navigation tab buttons
+    document.querySelectorAll('.nav-tab, .nav-tabs button, .nav-tabs a').forEach(btn => {
+        btn.classList.remove('active');
+        const btnTab = btn.getAttribute('data-tab') || (btn.getAttribute('href') ? btn.getAttribute('href').replace(/^#/, '') : '');
+        if (btnTab && (btnTab === cleanId || btnTab === sectionId || aliasMap[btnTab] === sectionId)) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Add active class to corresponding container section
+    if (targetPane) {
+        targetPane.classList.add('active');
+    }
+
+    // Trigger corresponding module load function when a tab is selected
+    try {
+        if (sectionId === 'halls-section' || cleanId.includes('hall')) {
+            if (typeof loadHalls === 'function') loadHalls();
+        } else if (sectionId === 'movies-section' || cleanId.includes('movie')) {
+            if (typeof loadMovies === 'function') loadMovies();
+        } else if (sectionId === 'showtimes-section' || cleanId.includes('showtime')) {
+            if (typeof loadShowtimes === 'function') loadShowtimes();
+        } else if (sectionId === 'reservations-section' || cleanId.includes('reservation')) {
+            if (typeof loadReservations === 'function') {
+                loadReservations();
+            }
+        } else if (sectionId === 'refunds-section' || cleanId.includes('refund')) {
+            if (typeof loadRefunds === 'function') loadRefunds();
+        } else if (sectionId === 'vouchers-section' || cleanId.includes('voucher')) {
+            if (typeof loadVouchers === 'function') loadVouchers();
+        }
+    } catch (err) {
+        console.error('Error during tab switch module loading:', err);
+    }
+}
+window.switchTab = switchTab;
+
+function initFormListeners() {
+    const allocateHallForm = document.getElementById('allocateHallForm') || document.getElementById('createHallForm');
+    if (allocateHallForm) {
+        allocateHallForm.addEventListener('submit', handleAllocateHall);
+    }
+
+    const movieModalForm = document.getElementById('movieModalForm');
+    if (movieModalForm) {
+        movieModalForm.addEventListener('submit', handleSaveMovie);
+    }
+
+    const createShowtimeForm = document.getElementById('createShowtimeForm');
+    if (createShowtimeForm) {
+        createShowtimeForm.addEventListener('submit', handleCreateShowtime);
+    }
+
+    const createRefundForm = document.getElementById('createRefundForm');
+    if (createRefundForm) {
+        createRefundForm.addEventListener('submit', handleCreateRefund);
+    }
+
+    const createVoucherForm = document.getElementById('createVoucherForm');
+    if (createVoucherForm) {
+        createVoucherForm.addEventListener('submit', handleCreateVoucher);
+    }
+
+    const editHallForm = document.getElementById('editHallForm');
+    if (editHallForm) {
+        editHallForm.addEventListener('submit', handleSaveEditHall);
+    }
+}
+
+async function loadReservations() {
+    try {
+        if (typeof loadShowtimeDropdownForBooking === 'function') {
+            loadShowtimeDropdownForBooking();
+        }
+        if (typeof loadBookings === 'function') {
+            await loadBookings();
+        }
+    } catch (err) {
+        console.error('Error in loadReservations():', err);
+    }
+}
+window.loadReservations = loadReservations;
 
 // ======================================================================
 // 2. DASHBOARD LIVE STATISTICS
@@ -232,24 +396,38 @@ async function loadHalls() {
     }
 }
 
-async function handleCreateHall(e) {
-    e.preventDefault();
-    const name = document.getElementById('hallName').value.trim();
-    const totalRows = parseInt(document.getElementById('totalRows').value);
-    const seatsPerRow = parseInt(document.getElementById('seatsPerRow').value);
-    const hallType = document.getElementById('hallType').value;
-    const basePrice = parseFloat(document.getElementById('basePrice').value);
+async function handleAllocateHall(e) {
+    if (e && e.preventDefault) {
+        e.preventDefault();
+    }
+
+    const form = document.getElementById('allocateHallForm') || document.getElementById('createHallForm');
+    const nameInput = document.getElementById('hallName');
+    const totalRowsInput = document.getElementById('totalRows');
+    const seatsPerRowInput = document.getElementById('seatsPerRow');
+    const hallTypeInput = document.getElementById('hallType');
+    const basePriceInput = document.getElementById('basePrice');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const totalRows = totalRowsInput ? parseInt(totalRowsInput.value, 10) : 0;
+    const seatsPerRow = seatsPerRowInput ? parseInt(seatsPerRowInput.value, 10) : 0;
+    const hallType = hallTypeInput ? hallTypeInput.value : 'STANDARD';
+    const basePrice = basePriceInput ? parseFloat(basePriceInput.value) : 1200;
 
     // Validation
-    if (totalRows < 1 || totalRows > 26) {
+    if (!name) {
+        showToast('Hall name cannot be empty.', 'warning');
+        return;
+    }
+    if (isNaN(totalRows) || totalRows < 1 || totalRows > 26) {
         showToast('Total rows must be between 1 and 26.', 'warning');
         return;
     }
-    if (seatsPerRow < 1 || seatsPerRow > 30) {
+    if (isNaN(seatsPerRow) || seatsPerRow < 1 || seatsPerRow > 30) {
         showToast('Seats per row must be between 1 and 30.', 'warning');
         return;
     }
-    if (basePrice <= 0) {
+    if (isNaN(basePrice) || basePrice <= 0) {
         showToast('Base price must be greater than 0 LKR.', 'warning');
         return;
     }
@@ -260,20 +438,37 @@ async function handleCreateHall(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, totalRows, seatsPerRow, hallType, basePrice })
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to create hall');
+        const data = await res.json().catch(() => ({}));
 
-        showToast(`🎉 Hall "${data.name}" created with ${data.totalCapacity} generated seats!`, 'success');
-        document.getElementById('createHallForm').reset();
-        document.getElementById('totalRows').value = 5;
-        document.getElementById('seatsPerRow').value = 8;
-        document.getElementById('basePrice').value = 1200;
-        loadHalls();
-        loadDashboardStats();
+        if (!res.ok) {
+            const errorMsg = data.error || (res.status === 400 || res.status === 409 ? 'Hall name already exists' : 'Failed to allocate hall');
+            if (res.status === 400 || res.status === 409 || /already exists/i.test(errorMsg)) {
+                showToast(`⚠️ ${errorMsg}`, 'warning');
+            } else {
+                showToast(`Error: ${errorMsg}`, 'error');
+            }
+            return;
+        }
+
+        const capacity = data.totalCapacity || data.total_capacity || (totalRows * seatsPerRow);
+        showToast(`🎉 Hall "${data.name || name}" allocated successfully with ${capacity} seats!`, 'success');
+
+        if (form) form.reset();
+        if (totalRowsInput) totalRowsInput.value = 5;
+        if (seatsPerRowInput) seatsPerRowInput.value = 8;
+        if (basePriceInput) basePriceInput.value = 1200;
+
+        await loadHalls();
+        if (typeof loadDashboardStats === 'function') {
+            loadDashboardStats();
+        }
     } catch (err) {
+        console.error('Error submitting allocate hall form:', err);
         showToast(`Error: ${err.message}`, 'error');
     }
 }
+window.handleAllocateHall = handleAllocateHall;
+window.handleCreateHall = handleAllocateHall;
 
 async function loadHallSeatingLayout(hallId) {
     if (!hallId) return;
