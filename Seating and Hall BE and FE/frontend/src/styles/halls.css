@@ -1,0 +1,162 @@
+}
+
+/* =========================
+   HALLS
+========================= */
+
+.seat-layout-button {
+  min-height: 34px;
+
+  padding: 0 11px;
+
+  border: 1px solid #dcd5ff;
+
+  border-radius: 9px;
+
+  background: #f8f5ff;
+
+  color: #6845d8;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  font-size: 11px;
+
+  font-weight: 600;
+}
+
+.capacity-preview {
+  padding: 14px;
+
+  border-radius: 11px;
+
+  background: #f7f5ff;
+
+  border: 1px solid #e3dcff;
+
+  color: #62537d;
+
+  font-size: 12px;
+}
+
+/* =========================
+   SEAT LAYOUT
+========================= */
+
+.seat-modal {
+  width: min(1100px, 96vw);
+}
+
+.seat-layout-content {
+  padding: 22px;
+}
+
+.cinema-screen {
+  width: min(600px, 85%);
+
+  margin: 0 auto 35px;
+
+  padding: 11px;
+
+  text-align: center;
+
+  border-radius: 50% 50% 12px 12px;
+
+  background: linear-gradient(
+    180deg,
+    #ddd7ff,
+    #f8f6ff
+  );
+
+  color: #6545d4;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  letter-spacing: 4px;
+
+  box-shadow:
+    0 8px 25px
+    rgba(103, 72, 213, 0.12);
+}
+
+.seat-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(120px, 1fr)
+    );
+
+  gap: 12px;
+}
+
+.seat-card {
+  padding: 12px;
+
+  border: 1px solid #e2e6ed;
+
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 7px;
+
+  color: #525d70;
+}
+
+.seat-card.available {
+  border-color: #cbe9da;
+
+  background: #f5fcf8;
+}
+
+.seat-card.held {
+  border-color: #ffe0a3;
+
+  background: #fffaf0;
+}
+
+.seat-card.booked {
+  border-color: #ffd0d0;
+
+  background: #fff4f4;
+}
+
+.seat-card.out_of_order {
+  border-color: #d7dbe3;
+
+  background: #f2f3f5;
+
+  opacity: 0.75;
+}
+
+.seat-card strong {
+  font-size: 12px;
+}
+
+.seat-card select {
+  width: 100%;
+
+  padding: 7px;
+
+  border: 1px solid #dde2e9;
+
+  border-radius: 8px;
+
+  background: white;
+
+  font-size: 10px;
+
+  outline: none;
